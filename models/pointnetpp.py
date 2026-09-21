@@ -8,8 +8,17 @@ class PointNetPP(nn.Module):
 
 
     def _fps(X, num_samples, num_features):
-        pass
+        batch_size= X.shape[0]
+        num_points= X.shape[1]
 
+        sample_points= torch.zeros(batch_size, num_samples, 3)
+        initial_indices = torch.multinomial((X != 0.0).any(dim= -1).to(float), num_samples= 1).squeeze(1)
+
+        sample_points[:,0,:]= X[initial_indices.reshape(initial_indices, 1)]
+
+        distances= torch.zeros(batch_size, num_points, num_samples)
+
+        
 
 
 
