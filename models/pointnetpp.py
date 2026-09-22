@@ -6,18 +6,40 @@ class PointNetPP(nn.Module):
     def __init__(self):
         super().__init__()
 
-
+    @staticmethod
     def _fps(X, num_samples, num_features):
         batch_size= X.shape[0]
         num_points= X.shape[1]
+        feature_count= 3+num_features
 
-        sample_points= torch.zeros(batch_size, num_samples, 3)
+        sample_points= torch.zeros(batch_size, num_samples, feature_count, device= X.device, dtype= X.dtype)
+
         initial_indices = torch.multinomial((X != 0.0).any(dim= -1).to(float), num_samples= 1).squeeze(1)
 
-        sample_points[:,0,:]= X[initial_indices.reshape(initial_indices, 1)]
+        sample_points[:,0,:]= X[torch.arange(0, batch_size, device= X.device), initial_indices]
 
-        distances= torch.zeros(batch_size, num_points, num_samples)
+        distances= torch.zeros(batch_size, num_points, num_samples, device= X.device, dtype= X.dtype)
 
+        for i in range(num_samples-1):
+            distances[:,:,i]= ((X[:,:,:3]-sample_points[:,i,:3])**2).sum(dim= -1, keepdim= False)
+
+            sample_points[:,i+1,:]= X[torch.arange(0, batch_size, device= X.device), distances[:,:,:i+1].min(dim= -1, keepdim= False).argmax(dim= -1, keepdim= False)]
+
+        # Assign every point to its nearest sampled point, then compact each
+        # group into the fixed point dimension. Unused rows remain dummies.
+        nearest_samples= ((X[:, :, None, :3] - sample_points[:, None, :, :3])**2).sum(dim= -1).argmin(dim= -1)
+        groupings= torch.zeros(batch_size, num_samples, num_points, feature_count, device= X.device, dtype= X.dtype)
+
+        for sample_index in range(num_samples):
+            belongs_to_sample= nearest_samples == sample_index
+            compact_indices= belongs_to_sample.cumsum(dim= -1) - 1
+            valid_points= belongs_to_sample & (compact_indices < num_points)
+
+            batch_indices, source_indices= valid_points.nonzero(as_tuple= True)
+            target_indices= compact_indices[batch_indices, source_indices]
+            groupings[batch_indices, sample_index, target_indices]= X[batch_indices, source_indices]
+
+        return sample_points, groupings
         
 
 
@@ -29,62 +51,3 @@ class PointNetPP(nn.Module):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    @staticmethod
-    def _fps(X: torch.Tensor, num_samples: int, num_features: int) -> torch.Tensor:
-        """Select well-spread points with batched farthest point sampling.
-
-        ``X`` is expected to have shape ``[batch_size, num_points, features]``.
-        The first point in each batch is selected as the initial centroid so
-        that sampling is deterministic.
-        """
-        if X.ndim != 3:
-            raise ValueError("X must have shape [batch_size, num_points, features]")
-        if X.shape[-1] != num_features:
-            raise ValueError(
-                f"num_features must match X.shape[-1] ({X.shape[-1]})"
-            )
-        if not 1 <= num_samples <= X.shape[1]:
-            raise ValueError(
-                "num_samples must be between 1 and the number of input points"
-            )
-
-        batch_size, num_points, _ = X.shape
-        sampled_indices = torch.empty(
-            (batch_size, num_samples), dtype=torch.long, device=X.device
-        )
-        min_distances = torch.full(
-            (batch_size, num_points), float("inf"), dtype=X.dtype, device=X.device
-        )
-        farthest_indices = torch.zeros(
-            batch_size, dtype=torch.long, device=X.device
-        )
-        batch_indices = torch.arange(batch_size, device=X.device)
-
-        for sample_index in range(num_samples):
-            sampled_indices[:, sample_index] = farthest_indices
-            centroid = X[batch_indices, farthest_indices].unsqueeze(1)
-            distances = torch.sum((X - centroid) ** 2, dim=-1)
-            min_distances = torch.minimum(min_distances, distances)
-            farthest_indices = torch.argmax(min_distances, dim=1)
-
-        gather_indices = sampled_indices.unsqueeze(-1).expand(-1, -1, num_features)
-        return torch.gather(X, dim=1, index=gather_indices)
