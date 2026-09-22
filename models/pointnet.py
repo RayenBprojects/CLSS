@@ -75,5 +75,5 @@ class _TNet(nn.Module):
         batch_size= X.shape[0]
 
         Y_pred= self.mlp(X)
-        Y_pred= torch.max(Y_pred, dim= 1, keepdim= False)
+        Y_pred= torch.max(Y_pred, dim= 1, keepdim= False).values
         return self.transform(Y_pred).reshape(batch_size, self.input_features*self.input_features)
