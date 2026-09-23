@@ -1,10 +1,9 @@
 import asyncio
 
 import torch
-from torch import nn
 
 
-def train(model, dataloader, device, loss_fn, optimizer, settings= {}):
+async def train(model, dataloader, device, loss_fn, optimizer, settings= {}):
     model.train()
 
     for X, Y in dataloader:
@@ -19,7 +18,7 @@ def train(model, dataloader, device, loss_fn, optimizer, settings= {}):
         optimizer.zero_grad()
 
 
-def test(model, dataloader, device, loss_fn, settings= {}) -> dict[str: float]:
+async def test(model, dataloader, device, loss_fn, settings= {}) -> dict[str: float]:
     model.eval()
 
     num_batches= len(dataloader)
