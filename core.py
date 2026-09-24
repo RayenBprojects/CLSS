@@ -37,13 +37,13 @@ async def train_pointnetpp(dataset='s3dis'):
         results['dataset'] = 's3dis'
         dataloader = create_s3dis_dataloader(
             root=S3DIS_DATASET_DIR or './data/s3dis',
-            batch_size=8,
+            batch_size=2,
             train=True,
             test_area=6,
         )
         testing_dataloader = create_s3dis_dataloader(
             root=S3DIS_DATASET_DIR or './data/s3dis',
-            batch_size=8,
+            batch_size=2,
             train=False,
             test_area=6,
             shuffle=False,

@@ -1,10 +1,73 @@
+import os
+import shutil
+import ssl
 from collections.abc import Sequence
 from functools import partial
+from urllib.error import URLError
+from urllib.request import urlopen
 
 import torch
 from torch.utils.data import DataLoader
 from torch_geometric.data import Data
+from torch_geometric.data import extract_zip
 from torch_geometric.datasets import S3DIS
+
+
+class DownloadableS3DIS(S3DIS):
+    """S3DIS loader with configurable and bounded archive downloads."""
+
+    def download(self) -> None:
+        configured_url = os.getenv("S3DIS_URL")
+        urls = [configured_url] if configured_url else [
+            "https://huggingface.co/datasets/cminst/S3DIS/resolve/main/"
+            "indoor3d_sem_seg_hdf5_data.zip",
+            self.url,
+        ]
+        timeout = float(os.getenv("S3DIS_DOWNLOAD_TIMEOUT", "60"))
+        retries = int(os.getenv("S3DIS_DOWNLOAD_RETRIES", "3"))
+        archive_path = os.path.join(self.root, "indoor3d_sem_seg_hdf5_data.zip")
+        os.makedirs(self.root, exist_ok=True)
+
+        if not os.path.exists(archive_path):
+            last_error = None
+            for url in urls:
+                for attempt in range(retries):
+                    partial_path = f"{archive_path}.part"
+                    try:
+                        with urlopen(
+                            url,
+                            context=ssl._create_unverified_context(),
+                            timeout=timeout,
+                        ) as response, open(partial_path, "wb") as archive:
+                            shutil.copyfileobj(
+                                response,
+                                archive,
+                                length=10 * 1024 * 1024,
+                            )
+                        os.replace(partial_path, archive_path)
+                        break
+                    except (OSError, URLError) as error:
+                        last_error = error
+                        if os.path.exists(partial_path):
+                            os.unlink(partial_path)
+                else:
+                    continue
+                break
+            else:
+                raise RuntimeError(
+                    "Unable to download S3DIS from the configured sources. "
+                    "Set S3DIS_URL to another reachable copy of "
+                    "indoor3d_sem_seg_hdf5_data.zip, or place that archive "
+                    "in the dataset root."
+                ) from last_error
+
+        extract_zip(archive_path, self.root)
+        os.unlink(archive_path)
+        shutil.rmtree(self.raw_dir, ignore_errors=True)
+        os.rename(
+            os.path.join(self.root, "indoor3d_sem_seg_hdf5_data"),
+            self.raw_dir,
+        )
 
 
 def collate_s3dis(
@@ -60,7 +123,7 @@ def create_s3dis_dataloader(
     drop_last: bool = True,
 ) -> DataLoader:
     """Load S3DIS through PyG and yield dense batches for PointNet++."""
-    dataset = S3DIS(root=root, test_area=test_area, train=train)
+    dataset = DownloadableS3DIS(root=root, test_area=test_area, train=train)
     if shuffle is None:
         shuffle = train
 

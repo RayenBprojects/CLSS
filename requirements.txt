@@ -4,3 +4,4 @@ python-dotenv
 torch
 torchvision
 torch-geometric
+h5py

@@ -3,10 +3,15 @@ from torch import nn
 
 
 class Model(nn.Module):
-    def __init__(self, num_output_features: int, input_features: int = 3):
+    def __init__(
+        self,
+        num_output_features: int,
+        input_features: int = 3,
+        use_input_transform: bool = True,
+    ):
         super().__init__()
 
-        self.tnet1 = _TNet(input_features)
+        self.tnet1 = _TNet(input_features) if use_input_transform else None
         self.layers_1 = nn.Sequential(
             nn.Linear(input_features, 64),
             nn.ReLU(),
@@ -33,8 +38,9 @@ class Model(nn.Module):
         )
 
     def forward(self, X):
-        transform = self.tnet1(X)
-        X = torch.bmm(X, transform)
+        if self.tnet1 is not None:
+            transform = self.tnet1(X)
+            X = torch.bmm(X, transform)
 
         X = self.layers_1(X)
 

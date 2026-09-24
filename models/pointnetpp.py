@@ -9,7 +9,11 @@ class Model(nn.Module):
 
         self.pointnet_1= PointNet(1024, input_features=3 + num_features)
 
-        self.pointnet_2= PointNet(1024, input_features=3 + 1024)
+        self.pointnet_2 = PointNet(
+            1024,
+            input_features=3 + 1024,
+            use_input_transform=False,
+        )
 
         self.unit_pointnet_1= nn.Sequential(
             nn.Linear(3+1024, 512),
