@@ -1,0 +1,7 @@
+# External libraries used by the project
+numpy
+python-dotenv
+torch
+torchvision
+torch-geometric
+h5py
