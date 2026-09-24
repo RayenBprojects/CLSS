@@ -2,13 +2,13 @@ import torch
 from torch import nn
 
 
-class PointNet(nn.Module):
-    def __init__(self, num_output_features: int):
+class Model(nn.Module):
+    def __init__(self, num_output_features: int, input_features: int = 3):
         super().__init__()
 
-        self.tnet1 = _TNet(3)
+        self.tnet1 = _TNet(input_features)
         self.layers_1 = nn.Sequential(
-            nn.Linear(3, 64),
+            nn.Linear(input_features, 64),
             nn.ReLU(),
             nn.Linear(64, 64),
             nn.ReLU(),
@@ -69,11 +69,15 @@ class _TNet(nn.Module):
 
         nn.init.zeros_(self.transform[-1].weight)
         with torch.no_grad():
-            self.transform[-1].bias.copy_(torch.eye(input_features*input_features).flatten())
+            self.transform[-1].bias.copy_(torch.eye(input_features).flatten())
 
     def forward(self, X):
         batch_size= X.shape[0]
 
         Y_pred= self.mlp(X)
         Y_pred= torch.max(Y_pred, dim= 1, keepdim= False).values
-        return self.transform(Y_pred).reshape(batch_size, self.input_features*self.input_features)
+        return self.transform(Y_pred).reshape(
+            batch_size,
+            self.input_features,
+            self.input_features,
+        )

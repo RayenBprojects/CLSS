@@ -1,15 +1,15 @@
 import torch
 from torch import nn
 
-from pointnet import PointNet
+from .pointnet import Model as PointNet
 
-class PointNetPP(nn.Module):
-    def __init__(self):
+class Model(nn.Module):
+    def __init__(self, num_classes, num_features=6):
         super().__init__()
 
-        self.pointnet_1= PointNet(1024)
+        self.pointnet_1= PointNet(1024, input_features=3 + num_features)
 
-        self.pointnet_2= PointNet(1024)
+        self.pointnet_2= PointNet(1024, input_features=3 + 1024)
 
         self.unit_pointnet_1= nn.Sequential(
             nn.Linear(3+1024, 512),
@@ -24,18 +24,26 @@ class PointNetPP(nn.Module):
             nn.ReLU(),
             nn.Linear(512, 512),
             nn.ReLU(),
-            nn.Linear(512, 19)
+            nn.Linear(512, num_classes)
         )
 
 
     def forward(self, X):
-        fps_1= self._fps(X, 64, 0)
+        fps_1= self._fps(X, 64, X.shape[-1] - 3)
         
-        abstraction_1= torch.concat((fps_1[0][:,:,:3], self.pointnet_1.forward(fps_1[1])), dim= 2)
+        batch_size, sample_count, point_count, feature_count = fps_1[1].shape
+        local_features = self.pointnet_1(
+            fps_1[1].reshape(batch_size * sample_count, point_count, feature_count)
+        ).reshape(batch_size, sample_count, -1)
+        abstraction_1= torch.concat((fps_1[0][:,:,:3], local_features), dim= 2)
 
         fps_2= self._fps(abstraction_1, 16, 1024)
 
-        abstraction_2= torch.concat((fps_2[0][:,:,:3], self.pointnet_2.forward(fps_2[1])), dim= 2) 
+        batch_size, sample_count, point_count, feature_count = fps_2[1].shape
+        local_features = self.pointnet_2(
+            fps_2[1].reshape(batch_size * sample_count, point_count, feature_count)
+        ).reshape(batch_size, sample_count, -1)
+        abstraction_2= torch.concat((fps_2[0][:,:,:3], local_features), dim= 2)
 
         nearest_indices = fps_2[2].argmin(dim=2)
 
@@ -63,7 +71,7 @@ class PointNetPP(nn.Module):
 
         interpolation_2= torch.concat((interpolation_2[:,:,:3], self.unit_pointnet_2(interpolation_2)), dim= 2)
 
-        return interpolation_2
+        return interpolation_2[:, :, 3:]
         
 
 
