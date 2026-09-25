@@ -82,5 +82,7 @@ async def train_pointnetpp(dataset='s3dis'):
         loss_fn=loss_function,
     )
     print(f"loss= {result['loss']}")
+    results['status'] = True
     results['loss']= result['loss']
+    results['model']= model
     return results
