@@ -2,8 +2,11 @@ import asyncio
 
 import torch
 
+import time
+
 
 async def train(model, dataloader, device, loss_fn, optimizer, settings= {}):
+    start_time= time.perf_counter()
     model.train()
 
     num_batches = len(dataloader)
@@ -24,7 +27,10 @@ async def train(model, dataloader, device, loss_fn, optimizer, settings= {}):
         optimizer.step()
         optimizer.zero_grad()
 
-    return {'loss': returned_loss / num_batches, 'accuracy': 0.0}
+    end_time = time.perf_counter()
+    execution_time = float(end_time - start_time)/3600
+
+    return {'loss': returned_loss / num_batches, 'accuracy': 0.0, 'time': execution_time}
 
 
 async def test(model, dataloader, device, loss_fn, settings= {}) -> dict[str: float]:

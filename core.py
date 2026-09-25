@@ -72,7 +72,7 @@ async def train_pointnetpp(dataset='s3dis'):
                 loss_fn=loss_function,
                 optimizer=optimizer,
             )
-        print(f"loss= {result['loss']}")
+        print(f"loss= {result['loss']} | time= {result['time']} hours")
 
     print('---Testing---')
     result = await train_test.test(
