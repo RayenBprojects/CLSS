@@ -8,6 +8,7 @@ from models import pointnetpp
 
 from tools import train_test
 from tools.s3dis import create_s3dis_dataloader
+from tools.kitti360 import Kitti
 
 import numpy as np
 
