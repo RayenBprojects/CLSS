@@ -20,11 +20,15 @@ class Model(nn.Module):
             nn.ReLU(),
             nn.Linear(512, 512),
             nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
             nn.Linear(512, 64)
         )
 
         self.unit_pointnet_2= nn.Sequential(
             nn.Linear(3+64, 512),
+            nn.ReLU(),
+            nn.Linear(512, 512),
             nn.ReLU(),
             nn.Linear(512, 512),
             nn.ReLU(),
@@ -82,14 +86,18 @@ class Model(nn.Module):
 
     # Massive PITA; I don't think I can even read this.
     @staticmethod
-    def _fps(X, num_samples, num_features):
+    def _fps(
+        X: torch.Tensor,
+        num_samples: int,
+        num_features: int,
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         batch_size= X.shape[0]
         num_points= X.shape[1]
         feature_count= 3+num_features
 
         sample_points= torch.zeros(batch_size, num_samples, feature_count, device= X.device, dtype= X.dtype)
 
-        initial_indices = torch.multinomial((X != 0.0).any(dim= -1).to(float), num_samples= 1).squeeze(1)
+        initial_indices = torch.multinomial((X != 0.0).any(dim= -1).float(), num_samples= 1).squeeze(1)
 
         sample_points[:,0,:]= X[torch.arange(0, batch_size, device= X.device), initial_indices]
 
@@ -116,7 +124,9 @@ class Model(nn.Module):
             compact_indices= belongs_to_sample.cumsum(dim= -1) - 1
             valid_points= belongs_to_sample & (compact_indices < num_points)
 
-            batch_indices, source_indices= valid_points.nonzero(as_tuple= True)
+            valid_indices = valid_points.nonzero()
+            batch_indices = valid_indices[:, 0]
+            source_indices = valid_indices[:, 1]
             target_indices= compact_indices[batch_indices, source_indices]
             groupings[batch_indices, sample_index, target_indices]= X[batch_indices, source_indices]
             groupings[
@@ -124,14 +134,3 @@ class Model(nn.Module):
             ] -= sample_points[batch_indices, sample_index, :3]
 
         return sample_points, groupings, distances
-        
-
-
-
-
-
-
-
-
-
-
