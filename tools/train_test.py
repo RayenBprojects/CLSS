@@ -20,7 +20,7 @@ async def train(model, dataloader, device, loss_fn, optimizer, settings= {}):
 
         Y_pred = model(X).transpose(1, 2)
 
-        loss= loss_fn(Y_pred, Y)
+        loss= loss_fn(Y_pred[ (X != 0.0).any(dim= -1) ], Y[ (X != 0.0).any(dim= -1) ])
         returned_loss += loss.item()
         loss.backward()
 

@@ -1,6 +1,6 @@
 import torch
 from torch import nn
-from torch.utils.data import TensorDataset, dataloader
+from torch.utils.data import DataLoader
 from torch import optim
 from torchvision import datasets
 
@@ -27,14 +27,32 @@ async def train_pointnetpp(dataset='s3dis'):
     dataloader= 0
     testing_dataloader= 0
     num_features= 0
+    num_classes= 0
     epochs= 20
 
-    if dataset== 'kitti360': # WIP
-        results['status']= False
-        return results
-        num_features= 19
+    if dataset== 'kitti360':
+        results['dataset']= 'KITTI360'
+        dataloader= DataLoader(
+            dataset= Kitti(KITTI_360_DATASET_DIR, projection= '2d', set= 'train', organize= True),
+            batch_size= 4,
+            shuffle= True,
+            num_workers= 4,
+            pin_memory= True,
+            persistent_workers= True
+        )
+        testing_dataloader= DataLoader(
+            dataset= Kitti(KITTI_360_DATASET_DIR, projection= '2d', set= 'test', organize= False),
+            batch_size= 4,
+            shuffle= True,
+            num_workers= 4,
+            pin_memory= True,
+            persistent_workers= True
+        )
+        num_features= 1
+        num_classes= 46
+
     elif dataset == 's3dis':
-        results['dataset'] = 's3dis'
+        results['dataset'] = 'S3DIS'
         dataloader = create_s3dis_dataloader(
             root=S3DIS_DATASET_DIR or './data/s3dis',
             batch_size=4,
@@ -48,11 +66,15 @@ async def train_pointnetpp(dataset='s3dis'):
             test_area=6,
             shuffle=False,
         )
-        num_features = dataloader.dataset.num_features
+        num_features = dataloader.dataset.num_features,
+        num_classes= 13
+
+    else:
+        return {'status': False}
 
 
     model = pointnetpp.Model(
-        num_classes=13,
+        num_classes=num_classes,
         num_features=num_features,
     )
 

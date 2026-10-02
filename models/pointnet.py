@@ -38,16 +38,19 @@ class Model(nn.Module):
         )
 
     def forward(self, X):
+        valid_points = (X != 0.0).any(dim=-1)
+
         if self.tnet1 is not None:
-            transform = self.tnet1(X)
+            transform = self.tnet1(X, valid_points)
             X = torch.bmm(X, transform)
 
         X = self.layers_1(X)
 
-        transform = self.tnet2(X)
+        transform = self.tnet2(X, valid_points)
         X = torch.bmm(X, transform)
 
         X = self.layers_2(X)
+        X = X.masked_fill(~valid_points.unsqueeze(-1), torch.finfo(X.dtype).min)
         X = torch.max(X, dim=1).values
 
         return self.layers_3(X)
@@ -77,10 +80,13 @@ class _TNet(nn.Module):
         with torch.no_grad():
             self.transform[-1].bias.copy_(torch.eye(input_features).flatten())
 
-    def forward(self, X):
+    def forward(self, X, valid_points):
         batch_size= X.shape[0]
 
         Y_pred= self.mlp(X)
+        Y_pred = Y_pred.masked_fill(
+            ~valid_points.unsqueeze(-1), torch.finfo(Y_pred.dtype).min
+        )
         Y_pred= torch.max(Y_pred, dim= 1, keepdim= False).values
         return self.transform(Y_pred).reshape(
             batch_size,

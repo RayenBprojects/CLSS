@@ -4,7 +4,7 @@ from torch import nn
 from .pointnet import Model as PointNet
 
 class Model(nn.Module):
-    def __init__(self, num_classes, num_features=6):
+    def __init__(self, num_classes, num_features):
         super().__init__()
 
         self.pointnet_1= PointNet(1024, input_features=3 + num_features)
