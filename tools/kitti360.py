@@ -13,42 +13,32 @@ class Kitti(Dataset):
         if projection not in ['2d', '3d'] or set not in ['train', 'test', 'eval']:
             raise Exception("Invalid arguments.")
 
-        directory= Path(directory)
+        self.directory= Path(directory)
 
-        directory_2d= (directory/"all_2d_projections")
+        directory_2d= (self.directory/"all_2d_projections")
         directory_2d_items= next(os.walk(directory_2d))
 
-        directory_2d_test= (directory/"all_2d_projections_test")
+        directory_2d_test= (self.directory/"all_2d_projections_test")
         directory_2d_test.mkdir(parents= True, exist_ok= True)
         directory_2d_test_items= next(os.walk(directory_2d_test))
 
-        directory_2d_eval= (directory/"all_2d_projections_eval")
+        directory_2d_eval= (self.directory/"all_2d_projections_eval")
         directory_2d_eval.mkdir(parents= True, exist_ok= True)
         directory_2d_eval_items= next(os.walk(directory_2d_eval))
 
-        directory_3d= (directory/"all_3d_projections")
+        directory_3d= (self.directory/"all_3d_projections")
         directory_3d_items= next(os.walk(directory_3d))
 
-        directory_3d_test= (directory/"all_3d_projections_test")
+        directory_3d_test= (self.irectory/"all_3d_projections_test")
         directory_3d_test.mkdir(parents= True, exist_ok= True)
         directory_3d_test_items= next(os.walk(directory_3d_test))
 
-        directory_3d_eval= (directory/"all_3d_projections_eval")
+        directory_3d_eval= (self.directory/"all_3d_projections_eval")
         directory_3d_eval.mkdir(parents= True, exist_ok= True)
         directory_3d_eval_items= next(os.walk(directory_3d_eval))
 
         if organize:
-            for item_2d_test  in directory_2d_test_items[2]:
-                shutil.move(directory_2d_test/item_2d_test, directory_2d/item_2d_test)
-
-            for item_2d_eval in directory_2d_eval_items[2]:
-                shutil.move(directory_2d_eval/item_2d_eval, directory_2d/item_2d_eval)
-
-            for item_3d_test in directory_3d_test_items[2]:
-                shutil.move(directory_3d_test/item_3d_test, directory_3d/item_3d_test)
-
-            for item_3d_eval in directory_3d_eval_items[2]:
-                shutil.move(directory_3d_eval/item_3d_eval, directory_3d/item_3d_eval)
+            self.clean()
 
             files_2d = {path.name for path in directory_2d.glob("*.npy")}
             files_3d = {path.name for path in directory_3d.glob("*.npy")}
@@ -83,9 +73,47 @@ class Kitti(Dataset):
         )
 
         if not self.file_paths:
-            raise FileNotFoundError(f"No .npy files found in {directory}")
+            raise FileNotFoundError(f"No .npy files found in {self.directory}")
 
         self.std_num_points = std_num_points
+
+    def __del__(self):
+        self._clean()
+
+    def _clean(self):
+        directory_2d= (self.directory/"all_2d_projections")
+        directory_2d_items= next(os.walk(directory_2d))
+
+        directory_2d_test= (self.directory/"all_2d_projections_test")
+        directory_2d_test.mkdir(parents= True, exist_ok= True)
+        directory_2d_test_items= next(os.walk(directory_2d_test))
+
+        directory_2d_eval= (self.directory/"all_2d_projections_eval")
+        directory_2d_eval.mkdir(parents= True, exist_ok= True)
+        directory_2d_eval_items= next(os.walk(directory_2d_eval))
+
+        directory_3d= (self.directory/"all_3d_projections")
+        directory_3d_items= next(os.walk(directory_3d))
+
+        directory_3d_test= (self.irectory/"all_3d_projections_test")
+        directory_3d_test.mkdir(parents= True, exist_ok= True)
+        directory_3d_test_items= next(os.walk(directory_3d_test))
+
+        directory_3d_eval= (self.directory/"all_3d_projections_eval")
+        directory_3d_eval.mkdir(parents= True, exist_ok= True)
+        directory_3d_eval_items= next(os.walk(directory_3d_eval))
+
+        for item_2d_test  in directory_2d_test_items[2]:
+            shutil.move(directory_2d_test/item_2d_test, directory_2d/item_2d_test)
+
+        for item_2d_eval in directory_2d_eval_items[2]:
+            shutil.move(directory_2d_eval/item_2d_eval, directory_2d/item_2d_eval)
+
+        for item_3d_test in directory_3d_test_items[2]:
+            shutil.move(directory_3d_test/item_3d_test, directory_3d/item_3d_test)
+
+        for item_3d_eval in directory_3d_eval_items[2]:
+            shutil.move(directory_3d_eval/item_3d_eval, directory_3d/item_3d_eval)
 
     def __len__(self):
         return len(self.file_paths)
