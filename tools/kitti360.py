@@ -29,7 +29,7 @@ class Kitti(Dataset):
         directory_3d= (self.directory/"all_3d_projections")
         directory_3d_items= next(os.walk(directory_3d))
 
-        directory_3d_test= (self.irectory/"all_3d_projections_test")
+        directory_3d_test= (self.directory/"all_3d_projections_test")
         directory_3d_test.mkdir(parents= True, exist_ok= True)
         directory_3d_test_items= next(os.walk(directory_3d_test))
 
@@ -38,7 +38,7 @@ class Kitti(Dataset):
         directory_3d_eval_items= next(os.walk(directory_3d_eval))
 
         if organize:
-            self.clean()
+            self._clean()
 
             files_2d = {path.name for path in directory_2d.glob("*.npy")}
             files_3d = {path.name for path in directory_3d.glob("*.npy")}
@@ -95,7 +95,7 @@ class Kitti(Dataset):
         directory_3d= (self.directory/"all_3d_projections")
         directory_3d_items= next(os.walk(directory_3d))
 
-        directory_3d_test= (self.irectory/"all_3d_projections_test")
+        directory_3d_test= (self.directory/"all_3d_projections_test")
         directory_3d_test.mkdir(parents= True, exist_ok= True)
         directory_3d_test_items= next(os.walk(directory_3d_test))
 
