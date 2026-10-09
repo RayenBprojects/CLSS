@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 from tools.kitti360 import Kitti
 
@@ -28,6 +29,7 @@ def test_kitti_only_loads_npy_files(tmp_path):
     assert len(dataset) == 2
     assert dataset[0][0].shape == (12, 4)
     assert dataset[0][1].shape == (12,)
+    assert dataset[0][1].dtype == torch.long
     assert dataset[1][0].shape == (12, 4)
     assert dataset[1][1].shape == (12,)
 
