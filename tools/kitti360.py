@@ -6,114 +6,61 @@ from torch.utils.data import Dataset
 import shutil
 import sys
 
-
 class Kitti(Dataset):
-    def __init__(self, directory, projection, set, organize= True, std_num_points=124792):
-
-        if projection not in ['2d', '3d'] or set not in ['train', 'test', 'eval']:
-            raise Exception("Invalid arguments.")
+    def __init__(self, directory, label_type, set, force_organize= False, std_num_points=124792, num_samples= 61280): #124792 | 61280
+        
+        if label_type not in ['2d', '3d'] or set not in ['train', 'test', 'eval']:
+            raise Exception("Invalid label type or set selection.")
 
         self.directory= Path(directory)
 
-        directory_2d= (self.directory/"all_2d_projections")
-        directory_2d_items= next(os.walk(directory_2d))
-
-        directory_2d_test= (self.directory/"all_2d_projections_test")
-        directory_2d_test.mkdir(parents= True, exist_ok= True)
-        directory_2d_test_items= next(os.walk(directory_2d_test))
-
-        directory_2d_eval= (self.directory/"all_2d_projections_eval")
-        directory_2d_eval.mkdir(parents= True, exist_ok= True)
-        directory_2d_eval_items= next(os.walk(directory_2d_eval))
-
-        directory_3d= (self.directory/"all_3d_projections")
-        directory_3d_items= next(os.walk(directory_3d))
-
-        directory_3d_test= (self.directory/"all_3d_projections_test")
-        directory_3d_test.mkdir(parents= True, exist_ok= True)
-        directory_3d_test_items= next(os.walk(directory_3d_test))
-
-        directory_3d_eval= (self.directory/"all_3d_projections_eval")
-        directory_3d_eval.mkdir(parents= True, exist_ok= True)
-        directory_3d_eval_items= next(os.walk(directory_3d_eval))
-
-        if organize:
-            self._clean()
-
-            files_2d = {path.name for path in directory_2d.glob("*.npy")}
-            files_3d = {path.name for path in directory_3d.glob("*.npy")}
-            if files_2d != files_3d:
-                raise ValueError("2D and 3D projection directories must contain matching .npy files")
-
-            file_names = sorted(files_2d)
-            np.random.default_rng().shuffle(file_names)
-            test_count = len(file_names) // 10
-            eval_count = len(file_names) // 10
-
-            for file_name in file_names[:test_count]:
-                shutil.move(directory_2d / file_name, directory_2d_test / file_name)
-                shutil.move(directory_3d / file_name, directory_3d_test / file_name)
-
-            for file_name in file_names[test_count:test_count + eval_count]:
-                shutil.move(directory_2d / file_name, directory_2d_eval / file_name)
-                shutil.move(directory_3d / file_name, directory_3d_eval / file_name)
-
         directories= {
-            ('2d', 'train'): directory_2d,
-            ('2d', 'test'): directory_2d_test,
-            ('2d', 'eval'): directory_2d_eval,
-            ('3d', 'train'): directory_3d,
-            ('3d', 'test'): directory_3d_test,
-            ('3d', 'eval'): directory_3d_eval
+            '2d': self.directory/"all_2d_projections",
+            '3d': self.directory/"all_3d_projections"
         }
 
-        self.file_paths = sorted(
-            path for path in directories[(projection, set)].iterdir()
-            if path.is_file() and path.suffix.lower() == ".npy"
-        )
+        items= {
+            '2d': next(os.walk(directories['2d']))[2],
+            '3d': next(os.walk(directories['3d']))[2]
+            }
 
-        if not self.file_paths:
-            raise FileNotFoundError(f"No .npy files found in {self.directory}")
+        if sorted(items['2d']) != sorted(items['3d']):
+            raise Exception(f"2D and 3D datasets do not match. Please organize the data before initializing the dataset.")
+        
+        max_num_samples= len(items['2d'])
+
+        if num_samples > max_num_samples:
+            raise Exception(f"Invalid number of samples. Only {max_num_samples} samples found.")
+
+        if not force_organize:
+            try:
+                self.selection= np.load("./tools/kitti_selection.npy")
+
+                if self.selection.shape[0] != num_samples:
+                    raise Exception()
+            except:
+                if set != 'train':
+                    print(f"KITTI360 WARNING: No valid existing {set} selection found; {set} samples will be selected randomly.")
+
+                self.selection= np.random.choice(max_num_samples, size= num_samples, replace=False)
+        else:
+            if set != 'train':
+                print(f"KITTI360 WARNING: force_organize is set to true for non train set; {set} samples will be selected randomly.")
+
+            self.selection= np.random.choice(max_num_samples, size= num_samples, replace=False)
+
+        np.save("./tools/kitti_selection.npy", self.selection)
+
+        indices= {'train': (0, int(0.8*num_samples)),
+                  'test': (int(0.8*num_samples), int(0.9*num_samples)),
+                  'eval': (int(0.9*num_samples), num_samples)}
+
+        self.file_paths= []
+
+        for index in self.selection[indices[set][0] : indices[set][1]]:
+            self.file_paths.append(directories[label_type]/items[label_type][index])
 
         self.std_num_points = std_num_points
-
-    def __del__(self):
-        self._clean()
-
-    def _clean(self):
-        directory_2d= (self.directory/"all_2d_projections")
-        directory_2d_items= next(os.walk(directory_2d))
-
-        directory_2d_test= (self.directory/"all_2d_projections_test")
-        directory_2d_test.mkdir(parents= True, exist_ok= True)
-        directory_2d_test_items= next(os.walk(directory_2d_test))
-
-        directory_2d_eval= (self.directory/"all_2d_projections_eval")
-        directory_2d_eval.mkdir(parents= True, exist_ok= True)
-        directory_2d_eval_items= next(os.walk(directory_2d_eval))
-
-        directory_3d= (self.directory/"all_3d_projections")
-        directory_3d_items= next(os.walk(directory_3d))
-
-        directory_3d_test= (self.directory/"all_3d_projections_test")
-        directory_3d_test.mkdir(parents= True, exist_ok= True)
-        directory_3d_test_items= next(os.walk(directory_3d_test))
-
-        directory_3d_eval= (self.directory/"all_3d_projections_eval")
-        directory_3d_eval.mkdir(parents= True, exist_ok= True)
-        directory_3d_eval_items= next(os.walk(directory_3d_eval))
-
-        for item_2d_test  in directory_2d_test_items[2]:
-            shutil.move(directory_2d_test/item_2d_test, directory_2d/item_2d_test)
-
-        for item_2d_eval in directory_2d_eval_items[2]:
-            shutil.move(directory_2d_eval/item_2d_eval, directory_2d/item_2d_eval)
-
-        for item_3d_test in directory_3d_test_items[2]:
-            shutil.move(directory_3d_test/item_3d_test, directory_3d/item_3d_test)
-
-        for item_3d_eval in directory_3d_eval_items[2]:
-            shutil.move(directory_3d_eval/item_3d_eval, directory_3d/item_3d_eval)
 
     def __len__(self):
         return len(self.file_paths)
@@ -127,7 +74,7 @@ class Kitti(Dataset):
                 f"Expected a 2D point-cloud array in {file_path}, got shape {array.shape}"
             )
 
-        array = torch.from_numpy(array.copy())
+        array = torch.from_numpy(array.copy()).to(torch.float32)
         num_points = array.shape[0]
 
         if num_points > self.std_num_points:
@@ -140,4 +87,4 @@ class Kitti(Dataset):
             )
             array = torch.cat((array, padding), dim=0).to(torch.float32)
 
-        return (array[:, :4], array[:, 4])
+        return (array[:, :4], array[:, 4].to(torch.long))
