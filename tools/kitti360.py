@@ -7,10 +7,14 @@ import shutil
 import sys
 
 class Kitti(Dataset):
-    def __init__(self, directory, label_type, set, force_organize= False, std_num_points=124792, num_samples= 61280): #124792 | 61280
+    def __init__(self, directory, label_type, set, force_organize= False, std_num_points=90000, num_samples= 61280): #124792 | 61280
         
         if label_type not in ['2d', '3d'] or set not in ['train', 'test', 'eval']:
             raise Exception("Invalid label type or set selection.")
+
+        self.label_type= label_type
+
+        self.std_num_points = std_num_points
 
         self.directory= Path(directory)
 
@@ -20,14 +24,16 @@ class Kitti(Dataset):
         }
 
         items= {
-            '2d': next(os.walk(directories['2d']))[2],
-            '3d': next(os.walk(directories['3d']))[2]
+            '2d': sorted(next(os.walk(directories['2d']))[2]),
+            '3d': sorted(next(os.walk(directories['3d']))[2])
             }
 
         if sorted(items['2d']) != sorted(items['3d']):
             raise Exception(f"2D and 3D datasets do not match. Please organize the data before initializing the dataset.")
+
+        items= items['2d']
         
-        max_num_samples= len(items['2d'])
+        max_num_samples= len(items)
 
         if num_samples > max_num_samples:
             raise Exception(f"Invalid number of samples. Only {max_num_samples} samples found.")
@@ -55,23 +61,34 @@ class Kitti(Dataset):
                   'test': (int(0.8*num_samples), int(0.9*num_samples)),
                   'eval': (int(0.9*num_samples), num_samples)}
 
-        self.file_paths= []
+        self.file_paths= {
+            '2d': [],
+            '3d': []
+        }
 
         for index in self.selection[indices[set][0] : indices[set][1]]:
-            self.file_paths.append(directories[label_type]/items[label_type][index])
-
-        self.std_num_points = std_num_points
+            self.file_paths['2d'].append(directories['2d']/items[index])
+            self.file_paths['3d'].append(directories['3d']/items[index])
 
     def __len__(self):
-        return len(self.file_paths)
+        return len(self.file_paths['2d'])
 
     def __getitem__(self, index):
-        file_path = self.file_paths[index]
-        array = np.load(file_path, mmap_mode="r", allow_pickle=False)
+        array= {
+            '2d': np.load(self.file_paths['2d'][index], mmap_mode="r", allow_pickle=False).copy(),
+            '3d': np.load(self.file_paths['3d'][index], mmap_mode="r", allow_pickle=False).copy()
+        }
+
+        if len(array['2d']) != len(array['3d']):
+            print(f"WARNING: 2D and 3D scene {index+1} are mismatched in point number.")
+
+        mask= (array['2d'][:, 4] == -1 )| (array['2d'][:, 4] == 0) | (array['3d'][:, 4] == 0)
+
+        array= array[self.label_type][mask]
 
         if array.ndim != 2:
             raise ValueError(
-                f"Expected a 2D point-cloud array in {file_path}, got shape {array.shape}"
+                f"Expected a 2D point-cloud array in {self.file_paths[self.label_type][index]}, got shape {array.shape}"
             )
 
         array = torch.from_numpy(array.copy()).to(torch.float32)
