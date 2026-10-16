@@ -6,6 +6,56 @@ from torch.utils.data import Dataset
 import shutil
 import sys
 
+_semantic_ID_dict = {
+    -1 : "unlabeled",
+    0 : "unlabeled",
+    1 : "ego vehicle",
+    2 : "rectification border",
+    3 : "out of roi",
+    4 : "static",
+    5 : "dynamic",
+    6 : "ground",
+    7 : "road",
+    8 : "sidewalk",
+    9 : "parking",
+    10 : "rail track",
+    11 : "building",
+    12 : "wall",
+    13 : "fence",
+    14 : "guard rail",
+    15 : "bridge",
+    16 : "tunnel",
+    17 : "pole",
+    18 : "polegroup",
+    19 : "traffic light",
+    20 : "traffic sign",
+    21 : "vegetation",
+    22 : "terrain",
+    23 : "sky",
+    24 : "person",
+    25 : "rider",
+    26 : "car",
+    27 : "truck",
+    28 : "bus",
+    29 : "caravan",
+    30 : "trailer",
+    31 : "train",
+    32 : "motorcycle",
+    33 : "bicycle",
+    34 : "garage",
+    35 : "gate",
+    36 : "stop",
+    37 : "smallpole",
+    38 : "lamp",
+    39 : "trash bin",
+    40 : "vending machine",
+    41 : "box",
+    42 : "unknown construction",
+    43 : "unknown vehicle",
+    44 : "unknown object",
+    45 : "license plate"
+}
+
 class Kitti(Dataset):
     def __init__(self, directory, label_type, set, force_organize= False, std_num_points=90000, num_samples= 61280): #124792 | 61280
         
@@ -75,14 +125,14 @@ class Kitti(Dataset):
 
     def __getitem__(self, index):
         array= {
-            '2d': np.load(self.file_paths['2d'][index], mmap_mode="r", allow_pickle=False).copy(),
-            '3d': np.load(self.file_paths['3d'][index], mmap_mode="r", allow_pickle=False).copy()
+            '2d': np.load(self.file_paths['2d'][index], allow_pickle=False).copy(),
+            '3d': np.load(self.file_paths['3d'][index], allow_pickle=False).copy()
         }
 
         if len(array['2d']) != len(array['3d']):
             print(f"WARNING: 2D and 3D scene {index+1} are mismatched in point number.")
 
-        mask= (array['2d'][:, 4] == -1 )| (array['2d'][:, 4] == 0) | (array['3d'][:, 4] == 0)
+        mask= (array['2d'][:, 4] == -1 )| (array['2d'][:, 4] == 0) | (array['2d'][:, 4] == 1) | (array['3d'][:, 4] == 0) | (array['3d'][:, 4] == 1)
 
         array= array[self.label_type][mask]
 

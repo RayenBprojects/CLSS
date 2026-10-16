@@ -15,7 +15,8 @@ async def train(model, dataloader, device, loss_fn, optimizer, settings= {}):
 
     returned_loss = 0.0
     
-    for X, Y in dataloader:
+    for index, (X, Y) in enumerate(dataloader):
+        print(f"\rBatch {index+1}", end= "")
         X, Y= X.to(device), Y.to(device)
         valid_points = (X != 0.0).any(dim=-1)
         if not valid_points.any():
@@ -29,7 +30,7 @@ async def train(model, dataloader, device, loss_fn, optimizer, settings= {}):
 
         optimizer.step()
         optimizer.zero_grad()
-
+    print("")
     end_time = time.perf_counter()
     execution_time = float(end_time - start_time)/3600
 

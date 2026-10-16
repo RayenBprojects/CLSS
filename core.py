@@ -40,6 +40,7 @@ async def train_pointnetpp(dataset='s3dis'):
             pin_memory= True,
             persistent_workers= True
         )
+
         testing_dataloader= DataLoader(
             dataset= Kitti(KITTI_360_DATASET_DIR, label_type= '2d', set= 'test'),
             batch_size= 1,
