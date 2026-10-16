@@ -33,7 +33,7 @@ async def train_pointnetpp(dataset='s3dis'):
     if dataset== 'kitti360':
         results['dataset']= 'KITTI360'
         dataloader= DataLoader(
-            dataset= Kitti(KITTI_360_DATASET_DIR, label_type= '2d', set= 'train'),
+            dataset= Kitti(KITTI_360_DATASET_DIR, label_type= '2d', set= 'train', std_num_points= 90000, num_samples= 10),
             batch_size= 1,
             shuffle= True,
             num_workers= 4,
@@ -42,7 +42,7 @@ async def train_pointnetpp(dataset='s3dis'):
         )
 
         testing_dataloader= DataLoader(
-            dataset= Kitti(KITTI_360_DATASET_DIR, label_type= '2d', set= 'test'),
+            dataset= Kitti(KITTI_360_DATASET_DIR, label_type= '2d', set= 'test', std_num_points= 90000, num_samples= 10),
             batch_size= 1,
             shuffle= True,
             num_workers= 4,

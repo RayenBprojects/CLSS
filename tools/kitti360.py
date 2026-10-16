@@ -57,7 +57,10 @@ _semantic_ID_dict = {
 }
 
 class Kitti(Dataset):
-    def __init__(self, directory, label_type, set, force_organize= False, std_num_points=90000, num_samples= 61280): #124792 | 61280
+    def __init__(self, directory, label_type, set, force_organize= False, std_num_points=124792, num_samples= 61280): #124792 | 61280
+
+        if num_samples < 10:
+                    raise Exception(f"Invalid number of samples. Minimum 10 samples needed.")
         
         if label_type not in ['2d', '3d'] or set not in ['train', 'test', 'eval']:
             raise Exception("Invalid label type or set selection.")
