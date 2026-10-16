@@ -28,7 +28,7 @@ async def train_pointnetpp(dataset='s3dis'):
     testing_dataloader= 0
     num_features= 0
     num_classes= 0
-    epochs= 20
+    epochs= 3
 
     if dataset== 'kitti360':
         results['dataset']= 'KITTI360'
