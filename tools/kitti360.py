@@ -135,7 +135,13 @@ class Kitti(Dataset):
         if len(array['2d']) != len(array['3d']):
             print(f"WARNING: 2D and 3D scene {index+1} are mismatched in point number.")
 
-        mask= (array['2d'][:, 4] == -1 )| (array['2d'][:, 4] == 0) | (array['2d'][:, 4] == 1) | (array['3d'][:, 4] == 0) | (array['3d'][:, 4] == 1)
+        mask = (
+            (array['2d'][:, 4] != -1)
+            & (array['2d'][:, 4] != 0)
+            & (array['2d'][:, 4] != 1)
+            & (array['3d'][:, 4] != 0)
+            & (array['3d'][:, 4] != 1)
+        )
 
         array= array[self.label_type][mask]
 

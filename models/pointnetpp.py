@@ -94,10 +94,11 @@ class Model(nn.Module):
         batch_size= X.shape[0]
         num_points= X.shape[1]
         feature_count= 3+num_features
+        valid_points = (X != 0.0).any(dim=-1)
 
         sample_points= torch.zeros(batch_size, num_samples, feature_count, device= X.device, dtype= X.dtype)
 
-        initial_indices = torch.multinomial((X != 0.0).any(dim= -1).float(), num_samples= 1).squeeze(1)
+        initial_indices = torch.multinomial(valid_points.float(), num_samples= 1).squeeze(1)
 
         sample_points[:,0,:]= X[torch.arange(0, batch_size, device= X.device), initial_indices]
 
@@ -106,7 +107,9 @@ class Model(nn.Module):
         for i in range(num_samples-1):
             distances[:,:,i]= ((X[:,:,:3]-sample_points[:,i,:3].unsqueeze(1))**2).sum(dim= -1, keepdim= False)
 
-            farthest_indices= distances[:,:,:i+1].min(dim= -1, keepdim= False).values.argmax(dim= -1, keepdim= False)
+            min_distances = distances[:, :, :i+1].min(dim=-1).values
+            min_distances = min_distances.masked_fill(~valid_points, -torch.inf)
+            farthest_indices = min_distances.argmax(dim=-1)
             sample_points[:,i+1,:]= X[torch.arange(0, batch_size, device= X.device), farthest_indices]
 
         distances[:, :, -1] = (
@@ -117,6 +120,7 @@ class Model(nn.Module):
         # group into the fixed point dimension. Unused rows remain dummies.
         # AI generated; must learn:
         nearest_samples= ((X[:, :, None, :3] - sample_points[:, None, :, :3])**2).sum(dim= -1).argmin(dim= -1)
+        nearest_samples = nearest_samples.masked_fill(~valid_points, -1)
         groupings= torch.zeros(batch_size, num_samples, num_points, feature_count, device= X.device, dtype= X.dtype)
 
         for sample_index in range(num_samples):
