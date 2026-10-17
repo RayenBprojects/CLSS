@@ -4,7 +4,7 @@ from torch import nn
 
 def _masked_max(X: torch.Tensor, valid_points: torch.Tensor) -> torch.Tensor:
     has_valid_points = valid_points.any(dim=1, keepdim=True)
-    X = X.masked_fill(~valid_points.unsqueeze(-1), torch.finfo(X.dtype).min)
+    X = X.masked_fill(~valid_points.unsqueeze(-1), float("-inf"))
     X = torch.max(X, dim=1).values
     return X.masked_fill(~has_valid_points, 0.0)
 

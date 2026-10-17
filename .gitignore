@@ -6,6 +6,4 @@ temp*.py
 
 data/
 
-models/saved/
-
 *.npy
