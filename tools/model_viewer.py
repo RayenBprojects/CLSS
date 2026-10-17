@@ -12,7 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def load_saved_model(dataset: str, model_path: str | None, device: torch.device):
     if model_path is None:
         saved_models = sorted(
-            (ROOT / "models" / "saved").glob(f"[0-9][0-9][0-9][0-9]_{dataset}.pt"),
+            (ROOT / "models" / "saved").glob(f"[0-9][0-9][0-9][0-9]_{dataset}.pt2"),
             key=lambda path: int(path.name.split("_", maxsplit=1)[0]),
         )
         if not saved_models:
@@ -25,7 +25,12 @@ def load_saved_model(dataset: str, model_path: str | None, device: torch.device)
     path = Path(model_path).expanduser().resolve()
     if not path.is_file():
         raise FileNotFoundError(f"Model file not found: {path}")
-    return torch.jit.load(str(path), map_location=device).eval(), path
+    if path.suffix == ".pt2":
+        model = torch.export.load(str(path)).module().to(device)
+    else:
+        model = torch.jit.load(str(path), map_location=device)
+        model.eval()
+    return model, path
 
 
 def get_sample(dataloader, sample_index: int):
