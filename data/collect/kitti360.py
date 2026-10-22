@@ -268,7 +268,7 @@ def _get_sampled_point_cloud(sample_point_cloud_cylindrical, LIDAR_margins : tup
 
 
 
-def project_2d_semantic_instance_data(absolute_image_directory : str, absolute_scan_directory: str, absolute_destination_directory : str, LIDAR_relative_xyz : tuple , image_margins : tuple, LIDAR_margins : tuple, data_format : str, sample_only : bool = False, ignore_duplicates : bool = False) -> int:
+def project_2d_semantic_instance_data(absolute_image_directory : str, absolute_scan_directory: str, absolute_destination_directory : str, prefix : str, LIDAR_relative_xyz : tuple , image_margins : tuple, LIDAR_margins : tuple, data_format : str, sample_only : bool = False, ignore_duplicates : bool = False) -> int:
     ''' 
     WARNING: MAKE SURE TO HAVE CLEANED YOUR IMAGE AND SCAN DATA BEFORE RUNNING THIS FUNCTION! MULTIPLE RUNS WILL CAUSE DUPLICATE DATA GENERATION!
     LIDAR_relative_xyz is (x,y,z), camera's position relative to the lidar. X is lidar forward at 0 degrees, Y is left, Z is up in meters
@@ -315,7 +315,7 @@ def project_2d_semantic_instance_data(absolute_image_directory : str, absolute_s
         return 1 # empty  
  
     for i in range(len(matching_files)):
-        print(f"Collecting file {i+1}/{len(matching_files)}")
+        print(f"\rCollecting 2D file {i+1}/{len(matching_files)}", end= "")
 
         continue_flag = False
         save_name = matching_files[i][0].name[:-4]
@@ -382,7 +382,9 @@ def project_2d_semantic_instance_data(absolute_image_directory : str, absolute_s
                         break
                 
         os.makedirs(agnostic_destination_directory, exist_ok=True)
-        np.save(os.path.join(agnostic_destination_directory, save_name),labeled_point_cloud_xyz)
+        np.save(os.path.join(agnostic_destination_directory, (prefix+save_name)),labeled_point_cloud_xyz)
+
+    print("")
     
     return 0
 
@@ -429,7 +431,7 @@ def inspect_collected_2d_semantic_instance_data(absolute_destination_directory :
 
 
 
-def project_KITTI_3d_semantic_instance_data(absolute_mesh_directory : str, absolute_scan_directory : str, absolute_destination_directory : str, absolute_calibration_directory : str, absolute_poses_directory : str, ignore_duplicates : bool = False) -> int:
+def project_KITTI_3d_semantic_instance_data(absolute_mesh_directory : str, absolute_scan_directory : str, absolute_destination_directory : str, prefix : str, absolute_calibration_directory : str, absolute_poses_directory : str, ignore_duplicates : bool = False) -> int:
     agnostic_cam_to_velo_path = os.path.join(os.path.normpath(absolute_calibration_directory), "calib_cam_to_velo.txt")
     agnostic_cam_to_pose_path = os.path.join(os.path.normpath(absolute_calibration_directory), "calib_cam_to_pose.txt")
     agnostic_poses_path = os.path.join(os.path.normpath(absolute_poses_directory), "poses.txt")
@@ -444,8 +446,7 @@ def project_KITTI_3d_semantic_instance_data(absolute_mesh_directory : str, absol
     lengths = []
 
     existing_save_files = list(Path(agnostic_destination_directory).glob('*.npy'))
-
-    print("identifying files")            
+       
     for i in range(len(static_mesh_files)):
         lengths.append(0)
         for n in range(len(scan_files)):
@@ -471,7 +472,7 @@ def project_KITTI_3d_semantic_instance_data(absolute_mesh_directory : str, absol
     for i in range(len(matching_files)):
         if matching_files[i][0] != current_static_mesh_file:
             n += 1
-            print(f"projecting segment {n}/{len_static_mesh_files}")
+            print(f"\rprojecting 3D segment {n}/{len_static_mesh_files}", end= "")
             current_static_mesh_file = matching_files[i][0]
             ply = PlyData.read(os.path.join(agnostic_static_mesh_directory, matching_files[i][0].name))
             vertex = ply['vertex']
@@ -553,8 +554,10 @@ def project_KITTI_3d_semantic_instance_data(absolute_mesh_directory : str, absol
                         break
             
         os.makedirs(agnostic_destination_directory, exist_ok=True)
-        np.save(os.path.join(agnostic_destination_directory, save_name),labeled_point_cloud_xyz)
-        
+        np.save(os.path.join(agnostic_destination_directory, (prefix+save_name)),labeled_point_cloud_xyz)
+
+    print("")
+
     return 0
 
 
