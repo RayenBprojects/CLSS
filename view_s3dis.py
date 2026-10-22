@@ -11,7 +11,7 @@ from tools.model_viewer import (
     predict_labels,
     show_point_cloud,
 )
-from tools.s3dis import create_s3dis_dataloader
+from data.manage.s3dis import create_s3dis_dataloader
 
 
 ROOT = Path(__file__).resolve().parent

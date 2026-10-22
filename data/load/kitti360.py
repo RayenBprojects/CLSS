@@ -3,8 +3,6 @@ from pathlib import Path
 import numpy as np
 import torch
 from torch.utils.data import Dataset
-import shutil
-import sys
 
 _semantic_ID_dict = {
     -1 : "unlabeled",
@@ -93,7 +91,7 @@ class Kitti(Dataset):
 
         if not force_organize:
             try:
-                self.selection= np.load("./tools/kitti_selection.npy")
+                self.selection= np.load(Path("./data/saved/kitti360_selection/kitti_selection.npy"))
 
                 if self.selection.shape[0] != num_samples:
                     raise Exception()
@@ -108,7 +106,7 @@ class Kitti(Dataset):
 
             self.selection= np.random.choice(max_num_samples, size= num_samples, replace=False)
 
-        np.save("./tools/kitti_selection.npy", self.selection)
+        np.save(Path("./data/saved/kitti360_selection/kitti_selection.npy"), self.selection)
 
         indices= {'train': (0, int(0.8*num_samples)),
                   'test': (int(0.8*num_samples), int(0.9*num_samples)),

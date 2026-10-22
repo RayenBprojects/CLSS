@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from tools.kitti360 import Kitti
+from data.load.kitti360 import Kitti
 
 
 def create_projection_directories(root):

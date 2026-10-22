@@ -2,17 +2,13 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 from torch import optim
-from torchvision import datasets
 
 from models import pointnetpp
 
 from tools import train_test
-from tools.s3dis import create_s3dis_dataloader
-from tools.kitti360 import Kitti
+from data.load.s3dis import create_s3dis_dataloader
+from data.load.kitti360 import Kitti
 
-import numpy as np
-
-import asyncio
 import os
 import dotenv
 
