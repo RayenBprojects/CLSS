@@ -1,6 +1,6 @@
 import torch
 
-from models.pointnetpp import Model
+from models.pointnetpp import Model, _farthest_point_sample, _knn_indices
 
 
 def test_pointnetpp_logits_are_finite_with_padded_points():
@@ -28,12 +28,26 @@ def test_pointnetpp_logits_are_finite_with_padded_points():
     )
 
 
-def test_pointnetpp_fps_excludes_zero_padding():
+def test_pointnetpp_sampling_and_grouping_exclude_zero_padding():
     points = torch.tensor(
         [[[100.0, 0.0, 0.0, 1.0], [101.0, 0.0, 0.0, 1.0], [0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]]
     )
+    valid_points = (points != 0.0).any(dim=-1)
 
-    centers, groups, _ = Model._fps(points, num_samples=2, num_features=1)
+    center_indices = _farthest_point_sample(points, num_samples=2, valid_points=valid_points)
+    centers = points[torch.arange(points.shape[0])[:, None], center_indices]
+    neighbor_indices, neighbor_valid = _knn_indices(
+        points[:, :, :3],
+        centers[:, :, :3],
+        valid_points,
+        num_neighbors=8,
+    )
+    groups = points[
+        torch.arange(points.shape[0])[:, None, None],
+        neighbor_indices,
+    ]
 
     assert ((centers != 0.0).any(dim=-1)).all()
-    assert int((groups != 0.0).any(dim=-1).sum()) == 2
+    assert groups.shape == (1, 2, 8, 4)
+    assert int(neighbor_valid.sum()) == 4
+    assert ((groups != 0.0).any(dim=-1) | ~neighbor_valid).all()

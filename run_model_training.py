@@ -42,7 +42,7 @@ def main():
         save_dir.mkdir(parents=True, exist_ok=True)
         model_path = next_model_path(save_dir, dataset)
         model = model.cpu().eval()
-        input_features = model.pointnet_1.layers_1[0].in_features
+        input_features = model.input_features
         example_input = torch.rand(1, 64, input_features)
         exported_model = torch.export.export(
             model,
