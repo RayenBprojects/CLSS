@@ -5,7 +5,7 @@ from data.collect.kitti360 import project_cylindrical_data, project_ground_truth
 import os
 import dotenv
 
-
+CLEAN_EXISTING= True
 REMOVE_MISMATCH= True
 
 
@@ -17,6 +17,21 @@ def main():
     (KITTI_360_DATASET_DIR / "all_pinhole_projections").mkdir(parents= True, exist_ok= True)
     (KITTI_360_DATASET_DIR / "all_cylindrical_projections").mkdir(parents= True, exist_ok= True)
 
+    if CLEAN_EXISTING:
+        print("-- Cleaning --")
+        ground_truth_items= next(os.walk(KITTI_360_DATASET_DIR / "all_ground_truth_projections"))[2]
+        pinhole_items= next(os.walk(KITTI_360_DATASET_DIR / "all_pinhole_projections"))[2]
+        cylindrical_items= next(os.walk(KITTI_360_DATASET_DIR / "all_cylindrical_projections"))[2]
+
+        for item in ground_truth_items:
+            (KITTI_360_DATASET_DIR/"all_ground_truth_projections"/item).unlink(missing_ok= True)
+
+        for item in pinhole_items:
+                    (KITTI_360_DATASET_DIR/"all_pinhole_projections"/item).unlink(missing_ok= True)
+
+        for item in cylindrical_items:
+                    (KITTI_360_DATASET_DIR/"all_cylindrical_projections"/item).unlink(missing_ok= True)
+
 
     for i in range(0,11):
         if i == 1:
@@ -27,7 +42,7 @@ def main():
         else:
             number = f"{i}"
 
-        print(f"collecting from drive {i+1}/{11}")
+        print(f"-- Collecting From Drive {i+1}/{11} --")
 
         project_ground_truth_data(
             absolute_mesh_directory= Path(KITTI_360_DATASET_DIR / f'data_3d_semantics/train/2013_05_28_drive_00{number}_sync/'),  
