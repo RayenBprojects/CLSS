@@ -13,7 +13,9 @@ def main():
     dotenv.load_dotenv()
     KITTI_360_DATASET_DIR= Path(os.getenv("KITTI_360_DATASET_DIR"))
 
-    (KITTI_360_DATASET_DIR / "all_2d_projections").mkdir(parents= True, exist_ok= True)
+    (KITTI_360_DATASET_DIR / "all_ground_truth_projections").mkdir(parents= True, exist_ok= True)
+    (KITTI_360_DATASET_DIR / "all_pinhole_projections").mkdir(parents= True, exist_ok= True)
+    (KITTI_360_DATASET_DIR / "all_cylindrical_projections").mkdir(parents= True, exist_ok= True)
 
 
     for i in range(0,11):
@@ -27,10 +29,20 @@ def main():
 
         print(f"collecting from drive {i+1}/{11}")
 
+        project_ground_truth_data(
+            absolute_mesh_directory= Path(KITTI_360_DATASET_DIR / f'data_3d_semantics/train/2013_05_28_drive_00{number}_sync/'),  
+            absolute_scan_directory= Path(KITTI_360_DATASET_DIR / f'data_3d_raw/2013_05_28_drive_00{number}_sync/velodyne_points/data'),
+            absolute_destination_directory= Path(KITTI_360_DATASET_DIR / f'all_ground_truth_projections'),
+            prefix= f"{number}_",
+            absolute_calibration_directory= Path(KITTI_360_DATASET_DIR / f'calibration'),
+            absolute_poses_directory= Path(KITTI_360_DATASET_DIR / f'data_poses/2013_05_28_drive_00{number}_sync'),
+            ignore_duplicates = True
+            )
+        
         project_pinhole_data(
-            absolute_image_directory =   Path(KITTI_360_DATASET_DIR / f'data_2d_semantics/train/2013_05_28_drive_00{number}_sync/image_00/instance'),           #f'D:\\Datasets\\KITTI-360\\data_2d_semantics\\train\\2013_05_28_drive_00{number}_sync\\image_00\\instance'),
-            absolute_scan_directory = Path(KITTI_360_DATASET_DIR / f'data_3d_raw/2013_05_28_drive_00{number}_sync/velodyne_points/data'), #Path(f'D:\\Datasets\\KITTI-360\\data_3d_raw\\2013_05_28_drive_00{number}_sync\\velodyne_points\\data'),
-            absolute_destination_directory = Path(KITTI_360_DATASET_DIR / f'all_pinhole_projections'), #Path(f'D:\\lidar-data-helper\\projects\\2013_05_28_drive_00{number}_sync\\projected_2d_labels'),
+            absolute_image_directory =   Path(KITTI_360_DATASET_DIR / f'data_2d_semantics/train/2013_05_28_drive_00{number}_sync/image_00/instance'),
+            absolute_scan_directory = Path(KITTI_360_DATASET_DIR / f'data_3d_raw/2013_05_28_drive_00{number}_sync/velodyne_points/data'),
+            absolute_destination_directory = Path(KITTI_360_DATASET_DIR / f'all_pinhole_projections'),
             prefix= f"{number}_",
             absolute_calibration_directory= Path(KITTI_360_DATASET_DIR / f'calibration'),
             data_format = 'KITTI',
@@ -39,9 +51,9 @@ def main():
         )
 
         project_cylindrical_data(
-            absolute_image_directory =   Path(KITTI_360_DATASET_DIR / f'data_2d_semantics/train/2013_05_28_drive_00{number}_sync/image_00/instance'),           #f'D:\\Datasets\\KITTI-360\\data_2d_semantics\\train\\2013_05_28_drive_00{number}_sync\\image_00\\instance'),
-            absolute_scan_directory = Path(KITTI_360_DATASET_DIR / f'data_3d_raw/2013_05_28_drive_00{number}_sync/velodyne_points/data'), #Path(f'D:\\Datasets\\KITTI-360\\data_3d_raw\\2013_05_28_drive_00{number}_sync\\velodyne_points\\data'),
-            absolute_destination_directory = Path(KITTI_360_DATASET_DIR / f'all_cylindrical_projections'), #Path(f'D:\\lidar-data-helper\\projects\\2013_05_28_drive_00{number}_sync\\projected_2d_labels'),
+            absolute_image_directory =   Path(KITTI_360_DATASET_DIR / f'data_2d_semantics/train/2013_05_28_drive_00{number}_sync/image_00/instance'),
+            absolute_scan_directory = Path(KITTI_360_DATASET_DIR / f'data_3d_raw/2013_05_28_drive_00{number}_sync/velodyne_points/data'),
+            absolute_destination_directory = Path(KITTI_360_DATASET_DIR / f'all_cylindrical_projections'),
             prefix= f"{number}_",
             LIDAR_relative_xyz = (0.79, 0.32, -0.18),
             image_margins = (0.10, 0.00, 0.10, 0.0),
@@ -50,16 +62,6 @@ def main():
             sample_only = False,
             ignore_duplicates=True
         )
-
-        project_ground_truth_data(
-            absolute_mesh_directory= Path(KITTI_360_DATASET_DIR / f'data_3d_semantics/train/2013_05_28_drive_00{number}_sync/'),  
-            absolute_scan_directory= Path(KITTI_360_DATASET_DIR / f'data_3d_raw/2013_05_28_drive_00{number}_sync/velodyne_points/data'),
-            absolute_destination_directory= Path(KITTI_360_DATASET_DIR / f'all_ground_truth_projections'),
-            prefix= f"{number}_",
-            absolute_calibration_directory= Path(KITTI_360_DATASET_DIR / f'calibration'),
-            absolute_poses_directory= Path(KITTI_360_DATASET_DIR / f'data_poses/2013_05_28_drive_00{number}_sync'), #f'D:\\Datasets\\KITTI-360\\data_poses\\2013_05_28_drive_00{number}_sync',
-            ignore_duplicates = True
-            )
 
     if REMOVE_MISMATCH:
         print('-- Removing Mismatched Files --')

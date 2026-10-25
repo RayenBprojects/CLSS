@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 from data.load.kitti360 import Kitti
+from data.collect.kitti360 import _get_projection_output_path
 
 
 def create_projection_directories(root):
@@ -51,3 +52,20 @@ def test_kitti_reports_mismatched_projection_files(tmp_path):
         assert str(error) == "2D and 3D projection directories must contain matching .npy files"
     else:
         raise AssertionError("Mismatched projection files should be rejected")
+
+
+def test_projection_output_path_overwrites_or_appends_duplicate_suffix(tmp_path):
+    existing_output = tmp_path / "drive_0001.npy"
+    existing_output.write_bytes(b"existing")
+
+    assert _get_projection_output_path(
+        tmp_path, "drive_", "0001", ignore_duplicates=True
+    ) == existing_output
+    assert _get_projection_output_path(
+        tmp_path, "drive_", "0001", ignore_duplicates=False
+    ) == tmp_path / "drive_0001d.npy"
+
+    (tmp_path / "drive_0001d.npy").write_bytes(b"existing duplicate")
+    assert _get_projection_output_path(
+        tmp_path, "drive_", "0001", ignore_duplicates=False
+    ) == tmp_path / "drive_0001dd.npy"

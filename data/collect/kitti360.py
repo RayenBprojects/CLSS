@@ -343,6 +343,13 @@ def _get_sampled_point_cloud(sample_point_cloud_cylindrical, LIDAR_margins : tup
 
 
 
+def _get_projection_output_path(destination_directory: str, prefix: str, base_name: str, ignore_duplicates: bool) -> Path:
+    output_path = Path(destination_directory) / f"{prefix}{base_name}.npy"
+    while not ignore_duplicates and output_path.exists():
+        output_path = output_path.with_name(f"{output_path.stem}d{output_path.suffix}")
+    return output_path
+
+
 def project_ground_truth_data(absolute_mesh_directory : str, absolute_scan_directory : str, absolute_destination_directory : str, prefix : str, absolute_calibration_directory : str, absolute_poses_directory : str, ignore_duplicates : bool = False) -> int:
     agnostic_cam_to_velo_path = os.path.join(os.path.normpath(absolute_calibration_directory), "calib_cam_to_velo.txt")
     agnostic_cam_to_pose_path = os.path.join(os.path.normpath(absolute_calibration_directory), "calib_cam_to_pose.txt")
@@ -357,8 +364,6 @@ def project_ground_truth_data(absolute_mesh_directory : str, absolute_scan_direc
     matching_files = [] # Will add tuples that go (static_mesh, scan)
     lengths = []
 
-    existing_save_files = list(Path(agnostic_destination_directory).glob('*.npy'))
-       
     for i in range(len(static_mesh_files)):
         lengths.append(0)
         for n in range(len(scan_files)):
@@ -454,19 +459,13 @@ def project_ground_truth_data(absolute_mesh_directory : str, absolute_scan_direc
         fig.show()'''
         
         os.makedirs(agnostic_destination_directory, exist_ok=True)
-        np.save(os.path.join(agnostic_destination_directory, f"{matching_files[i][1].name[:-3]}npy"), labeled_point_cloud_xyz)
-
-        save_name = matching_files[i][1].name[:-4]
-
-        if (ignore_duplicates == False):
-            while(True):
-                for item in existing_save_files:
-                    if item.name[:-4] == save_name:
-                        save_name += "d" # d for duplicate
-                        break
-            
-        os.makedirs(agnostic_destination_directory, exist_ok=True)
-        np.save(os.path.join(agnostic_destination_directory, (prefix+save_name)),labeled_point_cloud_xyz)
+        output_path = _get_projection_output_path(
+            agnostic_destination_directory,
+            prefix,
+            matching_files[i][1].stem,
+            ignore_duplicates
+        )
+        np.save(output_path, labeled_point_cloud_xyz)
 
     print("")
 
@@ -492,8 +491,6 @@ def project_pinhole_data(absolute_image_directory : str, absolute_scan_directory
     }
 
     agnostic_destination_directory = os.path.normpath(absolute_destination_directory)
-    existing_save_files = list(Path(agnostic_destination_directory).glob('*.npy'))
-    existing_save_names = {item.name[:-4] for item in existing_save_files}
     agnostic_image_directory = os.path.normpath(absolute_image_directory)
     agnostic_scan_directory = os.path.normpath(absolute_scan_directory)
 
@@ -517,13 +514,6 @@ def project_pinhole_data(absolute_image_directory : str, absolute_scan_directory
 
     for i, (image_file, scan_file) in enumerate(matching_files):
         print(f"\rCollecting Pinhole Projection File {i+1}/{len(matching_files)}", end="")
-
-        save_name = image_file.name[:-4]
-        if prefix + save_name in existing_save_names:
-            if ignore_duplicates:
-                continue
-            while prefix + save_name in existing_save_names:
-                save_name += "d"
 
         with img.open(image_file) as file:
             labeled_image = np.array(file)
@@ -583,11 +573,14 @@ def project_pinhole_data(absolute_image_directory : str, absolute_scan_directory
             _get_decoded_KITTI_instance
         )
 
-        output_name = prefix + save_name
-        output_path = os.path.join(agnostic_destination_directory, output_name)
         os.makedirs(agnostic_destination_directory, exist_ok=True)
+        output_path = _get_projection_output_path(
+            agnostic_destination_directory,
+            prefix,
+            image_file.stem,
+            ignore_duplicates
+        )
         np.save(output_path, labeled_point_cloud_xyz)
-        existing_save_names.add(output_name)
 
     print("")
     return 0
@@ -617,8 +610,6 @@ def project_cylindrical_data(absolute_image_directory : str, absolute_scan_direc
     
     agnostic_destination_directory = os.path.normpath(absolute_destination_directory)
 
-    existing_save_files = list(Path(agnostic_destination_directory).glob('*.npy'))
-
     agnostic_image_directory = os.path.normpath(absolute_image_directory)
     agnostic_scan_directory = os.path.normpath(absolute_scan_directory)
 
@@ -643,19 +634,6 @@ def project_cylindrical_data(absolute_image_directory : str, absolute_scan_direc
     for i in range(len(matching_files)):
         print(f"\rCollecting Cylindrical Projection File {i+1}/{len(matching_files)}", end= "")
 
-        continue_flag = False
-        save_name = matching_files[i][0].name[:-4]
-        for item in existing_save_files:
-            if item.name[:-4] == save_name:
-                if (ignore_duplicates != True):
-                    save_name += "d" # d for duplicate
-                    break
-                else:
-                    continue_flag = True
-                    break
-        if continue_flag:
-            continue
-        
         labeled_image = 0
         with img.open(matching_files[i][0]) as file:
             labeled_image = np.array(file)
@@ -698,17 +676,14 @@ def project_cylindrical_data(absolute_image_directory : str, absolute_scan_direc
         
         labeled_point_cloud_xyz = _cylindrical_to_labeled_point_cloud_xyz(point_cloud_cylindrical, point_cloud_xyz, labeled_image, image_margins, LIDAR_margins, _get_decoded_KITTI_label, _get_decoded_KITTI_instance)
 
-        save_name = matching_files[i][0].name[:-4]
-        
-        if (ignore_duplicates == False):
-            while(True):
-                for item in existing_save_files:
-                    if item.name[:-4] == save_name:
-                        save_name += "d" # d for duplicate
-                        break
-                
         os.makedirs(agnostic_destination_directory, exist_ok=True)
-        np.save(os.path.join(agnostic_destination_directory, (prefix+save_name)),labeled_point_cloud_xyz)
+        output_path = _get_projection_output_path(
+            agnostic_destination_directory,
+            prefix,
+            matching_files[i][0].stem,
+            ignore_duplicates
+        )
+        np.save(output_path, labeled_point_cloud_xyz)
 
     print("")
     
