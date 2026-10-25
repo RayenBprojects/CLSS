@@ -28,7 +28,7 @@ def next_model_path(save_dir: Path, dataset: str) -> Path:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", choices=("s3dis", "kitti360"), default="kitti360")
+    parser.add_argument("--dataset", choices=("kitti360",), default="kitti360")
     args = parser.parse_args()
 
     results = asyncio.run(train_pointnetpp(dataset=args.dataset))

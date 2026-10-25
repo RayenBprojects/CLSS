@@ -4,6 +4,4 @@ temp*.py
 
 .env
 
-data/saved/s3dis/
-
 *.npy

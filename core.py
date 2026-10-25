@@ -6,7 +6,6 @@ from torch import optim
 from models import pointnetpp
 
 from tools import train_test
-from data.load.s3dis import create_s3dis_dataloader
 from data.load.kitti360 import Kitti
 
 import os
@@ -14,60 +13,35 @@ import dotenv
 
 
 dotenv.load_dotenv()
-KITTI_360_DATASET_DIR= os.getenv("KITTI_360_DATASET_DIR")
-S3DIS_DATASET_DIR = os.getenv("S3DIS_DATASET_DIR")
+KITTI_360_DATASET_DIR = os.getenv("KITTI_360_DATASET_DIR")
 
 
-async def train_pointnetpp(dataset='s3dis'):
-    results= {}
-    dataloader= 0
-    testing_dataloader= 0
-    num_features= 0
-    num_classes= 0
-    epochs= 3
+async def train_pointnetpp(dataset='kitti360'):
+    if dataset != 'kitti360':
+        raise ValueError("Only the KITTI-360 dataset is supported")
 
-    if dataset== 'kitti360':
-        results['dataset']= 'KITTI360'
-        dataloader= DataLoader(
-            dataset= Kitti(KITTI_360_DATASET_DIR, label_type= '2d', set= 'train', std_num_points= 90000, num_samples= 61280),
-            batch_size= 1,
-            shuffle= True,
-            num_workers= 4,
-            pin_memory= True,
-            persistent_workers= True
-        )
+    results = {'dataset': 'KITTI360'}
+    epochs = 3
 
-        testing_dataloader= DataLoader(
-            dataset= Kitti(KITTI_360_DATASET_DIR, label_type= '2d', set= 'test', std_num_points= 90000, num_samples= 61280),
-            batch_size= 1,
-            shuffle= True,
-            num_workers= 4,
-            pin_memory= True,
-            persistent_workers= True
-        )
-        num_features= 1
-        num_classes= 46
+    dataloader = DataLoader(
+        dataset=Kitti(KITTI_360_DATASET_DIR, label_type='2d', set='train', std_num_points=90000, num_samples=61280),
+        batch_size=1,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True
+    )
 
-    elif dataset == 's3dis':
-        results['dataset'] = 'S3DIS'
-        dataloader = create_s3dis_dataloader(
-            root=S3DIS_DATASET_DIR or './data/s3dis',
-            batch_size=4,
-            train=True,
-            test_area=6,
-        )
-        testing_dataloader = create_s3dis_dataloader(
-            root=S3DIS_DATASET_DIR or './data/s3dis',
-            batch_size=4,
-            train=False,
-            test_area=6,
-            shuffle=False,
-        )
-        num_features = dataloader.dataset.num_features
-        num_classes= 13
-
-    else:
-        return {'status': False}
+    testing_dataloader = DataLoader(
+        dataset=Kitti(KITTI_360_DATASET_DIR, label_type='2d', set='test', std_num_points=90000, num_samples=61280),
+        batch_size=1,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True
+    )
+    num_features = 1
+    num_classes = 46
 
 
     model = pointnetpp.Model(
