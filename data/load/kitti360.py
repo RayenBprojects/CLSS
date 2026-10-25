@@ -55,39 +55,45 @@ _semantic_ID_dict = {
 }
 
 class Kitti(Dataset):
-    def __init__(self, directory, label_type, set, force_organize= False, std_num_points=124792, num_samples= 61280): #124792 | 61280
+    def __init__(self, directory, projection_type, set, force_organize= False, std_num_points=124792, num_samples= 61280, force_num_samples= False): #124792 | 61280
 
         if num_samples < 10:
                     raise Exception(f"Invalid number of samples. Minimum 10 samples needed.")
         
-        if label_type not in ['2d', '3d'] or set not in ['train', 'test', 'eval']:
+        if projection_type not in ['ground_truth', 'pinhole', 'cylindrical'] or set not in ['train', 'test', 'eval']:
             raise Exception("Invalid label type or set selection.")
 
-        self.label_type= label_type
+        self.projection_type= projection_type
 
         self.std_num_points = std_num_points
 
         self.directory= Path(directory)
 
         directories= {
-            '2d': self.directory/"all_2d_projections",
-            '3d': self.directory/"all_3d_projections"
+            'ground_truth': self.directory/"all_ground_truth_projections",
+            'pinhole': self.directory/"all_pinhole_projections",
+            'cylindrical': self.directory/"all_cylindrical_projections",
         }
 
         items= {
-            '2d': sorted(next(os.walk(directories['2d']))[2]),
-            '3d': sorted(next(os.walk(directories['3d']))[2])
+            'ground_truth': sorted(next(os.walk(directories['ground_truth']))[2]),
+            'pinhole': sorted(next(os.walk(directories['pinhole']))[2]),
+            'cylindrical' : sorted(next(os.walk(directories['cylindrical']))[2])
             }
 
-        if sorted(items['2d']) != sorted(items['3d']):
-            raise Exception(f"2D and 3D datasets do not match. Please organize the data before initializing the dataset.")
+        if (sorted(items['ground_truth']) != sorted(items['pinhole'])) or (sorted(items['ground_truth']) != sorted(items['cylindrical'])):
+            raise Exception(f"Different projection datasets do not match. Please organize the data before initializing the dataset.")
 
-        items= items['2d']
+        items= items['ground_truth']
         
         max_num_samples= len(items)
 
         if num_samples > max_num_samples:
-            raise Exception(f"Invalid number of samples. Only {max_num_samples} samples found.")
+            if force_num_samples:
+                raise Exception(f"Invalid number of samples. Only {max_num_samples} samples found.")
+            else:
+                print(f"Warning: Invalid number of samples. Only {max_num_samples} samples found.")
+                num_samples= max_num_samples
 
         if not force_organize:
             try:
@@ -113,39 +119,45 @@ class Kitti(Dataset):
                   'eval': (int(0.9*num_samples), num_samples)}
 
         self.file_paths= {
-            '2d': [],
-            '3d': []
+            'ground_truth': [],
+            'pinhole': [],
+            'cylindrical': [],
         }
 
         for index in self.selection[indices[set][0] : indices[set][1]]:
-            self.file_paths['2d'].append(directories['2d']/items[index])
-            self.file_paths['3d'].append(directories['3d']/items[index])
+            self.file_paths['ground_truth'].append(directories['ground_truth']/items[index])
+            self.file_paths['pinhole'].append(directories['pinhole']/items[index])
+            self.file_paths['cylindrical'].append(directories['cylindrical']/items[index])
 
     def __len__(self):
-        return len(self.file_paths['2d'])
+        return len(self.file_paths['ground_truth'])
 
     def __getitem__(self, index):
         array= {
-            '2d': np.load(self.file_paths['2d'][index], allow_pickle=False).copy(),
-            '3d': np.load(self.file_paths['3d'][index], allow_pickle=False).copy()
+            'ground_truth': np.load(self.file_paths['ground_truth'][index], allow_pickle=False).copy(),
+            'pinhole': np.load(self.file_paths['pinhole'][index], allow_pickle=False).copy(),
+            'cylindrical': np.load(self.file_paths['cylindrical'][index], allow_pickle=False).copy()
         }
 
-        if len(array['2d']) != len(array['3d']):
-            print(f"WARNING: 2D and 3D scene {index+1} are mismatched in point number.")
+        if (len(array['ground_truth']) != len(array['pinhole'])) or (len(array['ground_truth']) != len(array['cylindrical'])):
+            print(f"WARNING: data projections corresponding to scene {index+1} are mismatched in point number.")
 
         mask = (
-            (array['2d'][:, 4] != -1)
-            & (array['2d'][:, 4] != 0)
-            & (array['2d'][:, 4] != 1)
-            & (array['3d'][:, 4] != 0)
-            & (array['3d'][:, 4] != 1)
+            (array['cylindrical'][:, 4] != -1)
+            & (array['cylindrical'][:, 4] != 0)
+            & (array['cylindrical'][:, 4] != 1)
+            & (array['pinhole'][:, 4] != -1)
+            & (array['pinhole'][:, 4] != 0)
+            & (array['pinhole'][:, 4] != 1)
+            & (array['ground_truth'][:, 4] != 0)
+            & (array['ground_truth'][:, 4] != 1)
         )
 
-        array= array[self.label_type][mask]
+        array= array[self.projection_type][mask]
 
         if array.ndim != 2:
             raise ValueError(
-                f"Expected a 2D point-cloud array in {self.file_paths[self.label_type][index]}, got shape {array.shape}"
+                f"Expected a 2D point-cloud array in {self.file_paths[self.projection_type][index]}, got shape {array.shape}"
             )
 
         array = torch.from_numpy(array.copy()).to(torch.float32)

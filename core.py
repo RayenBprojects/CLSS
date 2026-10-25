@@ -24,7 +24,7 @@ async def train_pointnetpp(dataset='kitti360'):
     epochs = 3
 
     dataloader = DataLoader(
-        dataset=Kitti(KITTI_360_DATASET_DIR, label_type='2d', set='train', std_num_points=90000, num_samples=61280),
+        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type='ground_truth', set='train', std_num_points=90000, num_samples=61280),
         batch_size=1,
         shuffle=True,
         num_workers=4,
@@ -33,7 +33,7 @@ async def train_pointnetpp(dataset='kitti360'):
     )
 
     testing_dataloader = DataLoader(
-        dataset=Kitti(KITTI_360_DATASET_DIR, label_type='2d', set='test', std_num_points=90000, num_samples=61280),
+        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type='ground_', set='test', std_num_points=90000, num_samples=61280),
         batch_size=1,
         shuffle=True,
         num_workers=4,

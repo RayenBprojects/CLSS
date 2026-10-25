@@ -1,57 +1,74 @@
 import numpy as np
+import pytest
 import torch
 
-from data.load.kitti360 import Kitti
 from data.collect.kitti360 import _get_projection_output_path
+from data.load.kitti360 import Kitti
 
 
-def create_projection_directories(root):
-    for projection in ("2d", "3d"):
-        for split in ("", "_test", "_eval"):
-            (root / f"all_{projection}_projections{split}").mkdir(parents=True)
+PROJECTION_VALUES = {
+    "ground_truth": 11,
+    "pinhole": 22,
+    "cylindrical": 33,
+}
 
 
-def test_kitti_only_loads_npy_files(tmp_path):
-    create_projection_directories(tmp_path)
-    projection_dir = tmp_path / "all_2d_projections"
-    np.save(projection_dir / "a.npy", np.random.rand(8, 6))
-    np.save(projection_dir / "b.npy", np.random.rand(12, 6))
-    (projection_dir / "notes.txt").write_text("not a point cloud")
+@pytest.fixture
+def projection_dataset(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "data/saved/kitti360_selection").mkdir(parents=True)
 
+    dataset_dir = tmp_path / "dataset"
+    for projection in PROJECTION_VALUES:
+        (dataset_dir / f"all_{projection}_projections").mkdir(parents=True)
+
+    for scene_index in range(10):
+        filename = f"scene_{scene_index:02}.npy"
+        for projection, value in PROJECTION_VALUES.items():
+            point_cloud = np.full((8, 6), value, dtype=np.float32)
+            point_cloud[:, 4] = 2
+            np.save(dataset_dir / f"all_{projection}_projections" / filename, point_cloud)
+
+    return dataset_dir
+
+
+@pytest.mark.parametrize("projection_type", PROJECTION_VALUES)
+def test_kitti_loads_selected_projection(projection_dataset, projection_type):
     dataset = Kitti(
-        directory=tmp_path,
-        projection="2d",
+        directory=projection_dataset,
+        projection_type=projection_type,
         set="train",
-        organize=False,
-        std_num_points=12,
+        force_organize=True,
+        std_num_points=8,
+        num_samples=10,
     )
 
-    assert [p.name for p in dataset.file_paths] == ["a.npy", "b.npy"]
-    assert len(dataset) == 2
-    assert dataset[0][0].shape == (12, 4)
-    assert dataset[0][1].shape == (12,)
-    assert dataset[0][1].dtype == torch.long
-    assert dataset[1][0].shape == (12, 4)
-    assert dataset[1][1].shape == (12,)
+    assert len(dataset) == 8
+    selected_names = [path.name for path in dataset.file_paths[projection_type]]
+    assert all(
+        [path.name for path in dataset.file_paths[projection]] == selected_names
+        for projection in PROJECTION_VALUES
+    )
+
+    points, labels = dataset[0]
+    assert points.shape == (8, 4)
+    assert labels.shape == (8,)
+    assert labels.dtype == torch.long
+    assert torch.all(points[:, 0] == PROJECTION_VALUES[projection_type])
 
 
-def test_kitti_reports_mismatched_projection_files(tmp_path):
-    create_projection_directories(tmp_path)
-    np.save(tmp_path / "all_2d_projections" / "a.npy", np.zeros((8, 6)))
-    np.save(tmp_path / "all_3d_projections" / "b.npy", np.zeros((8, 6)))
+def test_kitti_reports_mismatched_projection_files(projection_dataset):
+    (projection_dataset / "all_cylindrical_projections" / "scene_09.npy").unlink()
 
-    try:
+    with pytest.raises(Exception, match="Different projection datasets do not match"):
         Kitti(
-            directory=tmp_path,
-            projection="2d",
+            directory=projection_dataset,
+            projection_type="ground_truth",
             set="train",
-            organize=True,
+            force_organize=True,
             std_num_points=8,
+            num_samples=10,
         )
-    except ValueError as error:
-        assert str(error) == "2D and 3D projection directories must contain matching .npy files"
-    else:
-        raise AssertionError("Mismatched projection files should be rejected")
 
 
 def test_projection_output_path_overwrites_or_appends_duplicate_suffix(tmp_path):

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from data.collect.kitti360 import project_cylindrical_data, project_ground_truth_data, project_pinhole_data
+from data.collect.kitti360 import project_cylindrical_data
 
 import os
 import dotenv
