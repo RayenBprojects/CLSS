@@ -268,170 +268,7 @@ def _get_sampled_point_cloud(sample_point_cloud_cylindrical, LIDAR_margins : tup
 
 
 
-def project_2d_semantic_instance_data(absolute_image_directory : str, absolute_scan_directory: str, absolute_destination_directory : str, prefix : str, LIDAR_relative_xyz : tuple , image_margins : tuple, LIDAR_margins : tuple, data_format : str, sample_only : bool = False, ignore_duplicates : bool = False) -> int:
-    ''' 
-    WARNING: MAKE SURE TO HAVE CLEANED YOUR IMAGE AND SCAN DATA BEFORE RUNNING THIS FUNCTION! MULTIPLE RUNS WILL CAUSE DUPLICATE DATA GENERATION!
-    LIDAR_relative_xyz is (x,y,z), camera's position relative to the lidar. X is lidar forward at 0 degrees, Y is left, Z is up in meters
-    camera margins is (up, down, left, right), part of screen left out
-    LIDAR_margins is (up, down, start_angle, end_angle). up and down are part of screen left out, start_angle and end_angle are the angles in degrees'''
-    # Need to do validation for margin inputs
-    # label value is semantic_ID * 1000 + instance_ID
-
-    get_image_files = {
-        'KITTI' : _get_KITTI_labeled_image_files,
-    }
-
-    get_scan_files = {
-        'KITTI' : _get_KITTI_raw_scan_files,
-    }
-
-    get_point_cloud_xyz = {
-        'KITTI' : _get_KITTI_point_cloud_xyz,
-    }
-    
-    agnostic_destination_directory = os.path.normpath(absolute_destination_directory)
-
-    existing_save_files = list(Path(agnostic_destination_directory).glob('*.npy'))
-
-    agnostic_image_directory = os.path.normpath(absolute_image_directory)
-    agnostic_scan_directory = os.path.normpath(absolute_scan_directory)
-
-    image_files = get_image_files[data_format](agnostic_image_directory)
-
-    scan_files = get_scan_files[data_format](agnostic_scan_directory)
-
-    matching_files = [] # Will add tuples that go (image, scan)
-
-    for i in range(len(image_files)):
-        for n in range(len(scan_files)):
-            if image_files[i].name[:-3] == scan_files[n].name[:-3]:
-                matching_files.append((image_files[i], scan_files[n]))
-                if(sample_only == True):
-                    n = len(scan_files) -1 
-                    i = len(image_files) - 1
-                break
-
-    if len(matching_files) == 0:
-        return 1 # empty  
- 
-    for i in range(len(matching_files)):
-        print(f"\rCollecting 2D file {i+1}/{len(matching_files)}", end= "")
-
-        continue_flag = False
-        save_name = matching_files[i][0].name[:-4]
-        for item in existing_save_files:
-            if item.name[:-4] == save_name:
-                if (ignore_duplicates != True):
-                    save_name += "d" # d for duplicate
-                    break
-                else:
-                    continue_flag = True
-                    break
-        if continue_flag:
-            continue
-        
-        labeled_image = 0
-        with img.open(matching_files[i][0]) as file:
-            labeled_image = np.array(file)
-
-        point_cloud_xyz = get_point_cloud_xyz[data_format](matching_files[i][1].resolve())
-        point_cloud_cylindrical = _xyz_to_cylindrical(point_cloud_xyz, LIDAR_relative_xyz)
-
-        if(sample_only == True):
-            sample_labeled_image = _get_sampled_image(labeled_image, image_margins)
-            sample_point_cloud_projected = _get_sampled_point_cloud(point_cloud_cylindrical, LIDAR_margins)
-
-            sample_labeled_image_resized = resize(sample_labeled_image, output_shape = (sample_point_cloud_projected.shape[0], sample_point_cloud_projected.shape[1]), anti_aliasing=False, preserve_range=True, order = 0)
-            fig, ax = plt.subplots()
-            ax.axis('off')
-            im1 = ax.imshow(sample_labeled_image_resized, cmap = 'magma', aspect = '1')
-            im2 = ax.imshow(sample_point_cloud_projected, cmap = 'magma', aspect = '1')
-            im2.set_visible(False)
-            current_state = 0
-            def toggle(event):
-                nonlocal current_state
-                if current_state == 0:
-                    im1.set_visible(False)
-                    im2.set_visible(True)
-                    ax.set_title('LIDAR')
-                    current_state = 1
-                else:
-                    im2.set_visible(False)
-                    im1.set_visible(True)
-                    ax.set_title('Camera')
-                    current_state = 0
-                fig.canvas.draw()
-            ax_button = plt.axes([0.81, 0.05, 0.1, 0.075])
-            button = Button(ax_button, 'Switch')
-            button.on_clicked(toggle)
-            ax.set_title('Camera')
-
-            plt.show()
-
-            return 0
-        
-        labeled_point_cloud_xyz = _cylindrical_to_labeled_point_cloud_xyz(point_cloud_cylindrical, point_cloud_xyz, labeled_image, image_margins, LIDAR_margins, _get_decoded_KITTI_label, _get_decoded_KITTI_instance)
-
-        save_name = matching_files[i][0].name[:-4]
-        
-        if (ignore_duplicates == False):
-            while(True):
-                for item in existing_save_files:
-                    if item.name[:-4] == save_name:
-                        save_name += "d" # d for duplicate
-                        break
-                
-        os.makedirs(agnostic_destination_directory, exist_ok=True)
-        np.save(os.path.join(agnostic_destination_directory, (prefix+save_name)),labeled_point_cloud_xyz)
-
-    print("")
-    
-    return 0
-
-
-
-def inspect_collected_2d_semantic_instance_data(absolute_destination_directory : str, file : int = 0, display_as_3d : bool = False) -> int:
-    agnostic_destination_directory = os.path.normpath(absolute_destination_directory)
-    existing_save_files = list(Path(agnostic_destination_directory).glob('*.npy'))
-
-    if len(existing_save_files) == 0:
-        return 1 # empty
-
-    labeled_point_cloud_xyz = np.load(existing_save_files[file])
-
-    unlabeled_point_cloud_cylindrical = _xyz_to_cylindrical(labeled_point_cloud_xyz[...,:-1], (0.0, 0.0, 0.0))
-
-    projection = _get_sampled_point_cloud(unlabeled_point_cloud_cylindrical, (0.0, 0.0, 0.0, 360.0), return_element = 'index')
-
-    
-    projection =  np.reshape(labeled_point_cloud_xyz[projection.ravel().astype(int), -1], shape = projection.shape)
-
-    plt.figure(1)
-    plt.imshow(projection, cmap = 'magma', aspect = '1')
-    plt.axis('off')
-    plt.title('Labeled LIDAR')
-    plt.show()
-
-    if display_as_3d:
-        fig = px.scatter_3d(
-            x = labeled_point_cloud_xyz[...,0],
-            y = labeled_point_cloud_xyz[...,1],
-            z = labeled_point_cloud_xyz[...,2],
-            color = labeled_point_cloud_xyz[...,-1],
-            color_continuous_scale='Viridis'
-        )
-        fig.update_layout(
-            scene=dict(
-                aspectmode='data'
-            )
-        )
-        fig.show()
-
-    return 0
-
-
-
-def project_KITTI_3d_semantic_instance_data(absolute_mesh_directory : str, absolute_scan_directory : str, absolute_destination_directory : str, prefix : str, absolute_calibration_directory : str, absolute_poses_directory : str, ignore_duplicates : bool = False) -> int:
+def project_ground_truth_data(absolute_mesh_directory : str, absolute_scan_directory : str, absolute_destination_directory : str, prefix : str, absolute_calibration_directory : str, absolute_poses_directory : str, ignore_duplicates : bool = False) -> int:
     agnostic_cam_to_velo_path = os.path.join(os.path.normpath(absolute_calibration_directory), "calib_cam_to_velo.txt")
     agnostic_cam_to_pose_path = os.path.join(os.path.normpath(absolute_calibration_directory), "calib_cam_to_pose.txt")
     agnostic_poses_path = os.path.join(os.path.normpath(absolute_poses_directory), "poses.txt")
@@ -472,7 +309,7 @@ def project_KITTI_3d_semantic_instance_data(absolute_mesh_directory : str, absol
     for i in range(len(matching_files)):
         if matching_files[i][0] != current_static_mesh_file:
             n += 1
-            print(f"\rprojecting 3D segment {n}/{len_static_mesh_files}", end= "")
+            print(f"\rCollecting Ground Truth File {n}/{len_static_mesh_files}", end= "")
             current_static_mesh_file = matching_files[i][0]
             ply = PlyData.read(os.path.join(agnostic_static_mesh_directory, matching_files[i][0].name))
             vertex = ply['vertex']
@@ -562,12 +399,168 @@ def project_KITTI_3d_semantic_instance_data(absolute_mesh_directory : str, absol
 
 
 
+def project_pinhole_data(absolute_image_directory : str, absolute_scan_directory: str, absolute_destination_directory : str, prefix : str, LIDAR_relative_xyz : tuple , image_margins : tuple, LIDAR_margins : tuple, data_format : str, sample_only : bool = False, ignore_duplicates : bool = False):
+    pass
+
+
+
+def project_cylindrical_data(absolute_image_directory : str, absolute_scan_directory: str, absolute_destination_directory : str, prefix : str, LIDAR_relative_xyz : tuple , image_margins : tuple, LIDAR_margins : tuple, data_format : str, sample_only : bool = False, ignore_duplicates : bool = False) -> int:
+    ''' 
+    WARNING: MAKE SURE TO HAVE CLEANED YOUR IMAGE AND SCAN DATA BEFORE RUNNING THIS FUNCTION! MULTIPLE RUNS WILL CAUSE DUPLICATE DATA GENERATION!
+    LIDAR_relative_xyz is (x,y,z), camera's position relative to the lidar. X is lidar forward at 0 degrees, Y is left, Z is up in meters
+    camera margins is (up, down, left, right), part of screen left out
+    LIDAR_margins is (up, down, start_angle, end_angle). up and down are part of screen left out, start_angle and end_angle are the angles in degrees'''
+    # Need to do validation for margin inputs
+    # label value is semantic_ID * 1000 + instance_ID
+
+    get_image_files = {
+        'KITTI' : _get_KITTI_labeled_image_files,
+    }
+
+    get_scan_files = {
+        'KITTI' : _get_KITTI_raw_scan_files,
+    }
+
+    get_point_cloud_xyz = {
+        'KITTI' : _get_KITTI_point_cloud_xyz,
+    }
+    
+    agnostic_destination_directory = os.path.normpath(absolute_destination_directory)
+
+    existing_save_files = list(Path(agnostic_destination_directory).glob('*.npy'))
+
+    agnostic_image_directory = os.path.normpath(absolute_image_directory)
+    agnostic_scan_directory = os.path.normpath(absolute_scan_directory)
+
+    image_files = get_image_files[data_format](agnostic_image_directory)
+
+    scan_files = get_scan_files[data_format](agnostic_scan_directory)
+
+    matching_files = [] # Will add tuples that go (image, scan)
+
+    for i in range(len(image_files)):
+        for n in range(len(scan_files)):
+            if image_files[i].name[:-3] == scan_files[n].name[:-3]:
+                matching_files.append((image_files[i], scan_files[n]))
+                if(sample_only == True):
+                    n = len(scan_files) -1 
+                    i = len(image_files) - 1
+                break
+
+    if len(matching_files) == 0:
+        return 1 # empty  
+ 
+    for i in range(len(matching_files)):
+        print(f"\rCollecting Cylindrical Projection File {i+1}/{len(matching_files)}", end= "")
+
+        continue_flag = False
+        save_name = matching_files[i][0].name[:-4]
+        for item in existing_save_files:
+            if item.name[:-4] == save_name:
+                if (ignore_duplicates != True):
+                    save_name += "d" # d for duplicate
+                    break
+                else:
+                    continue_flag = True
+                    break
+        if continue_flag:
+            continue
         
+        labeled_image = 0
+        with img.open(matching_files[i][0]) as file:
+            labeled_image = np.array(file)
 
+        point_cloud_xyz = get_point_cloud_xyz[data_format](matching_files[i][1].resolve())
+        point_cloud_cylindrical = _xyz_to_cylindrical(point_cloud_xyz, LIDAR_relative_xyz)
 
+        if(sample_only == True):
+            sample_labeled_image = _get_sampled_image(labeled_image, image_margins)
+            sample_point_cloud_projected = _get_sampled_point_cloud(point_cloud_cylindrical, LIDAR_margins)
 
+            sample_labeled_image_resized = resize(sample_labeled_image, output_shape = (sample_point_cloud_projected.shape[0], sample_point_cloud_projected.shape[1]), anti_aliasing=False, preserve_range=True, order = 0)
+            fig, ax = plt.subplots()
+            ax.axis('off')
+            im1 = ax.imshow(sample_labeled_image_resized, cmap = 'magma', aspect = '1')
+            im2 = ax.imshow(sample_point_cloud_projected, cmap = 'magma', aspect = '1')
+            im2.set_visible(False)
+            current_state = 0
+            def toggle(event):
+                nonlocal current_state
+                if current_state == 0:
+                    im1.set_visible(False)
+                    im2.set_visible(True)
+                    ax.set_title('LIDAR')
+                    current_state = 1
+                else:
+                    im2.set_visible(False)
+                    im1.set_visible(True)
+                    ax.set_title('Camera')
+                    current_state = 0
+                fig.canvas.draw()
+            ax_button = plt.axes([0.81, 0.05, 0.1, 0.075])
+            button = Button(ax_button, 'Switch')
+            button.on_clicked(toggle)
+            ax.set_title('Camera')
 
+            plt.show()
 
-
+            return 0
         
+        labeled_point_cloud_xyz = _cylindrical_to_labeled_point_cloud_xyz(point_cloud_cylindrical, point_cloud_xyz, labeled_image, image_margins, LIDAR_margins, _get_decoded_KITTI_label, _get_decoded_KITTI_instance)
 
+        save_name = matching_files[i][0].name[:-4]
+        
+        if (ignore_duplicates == False):
+            while(True):
+                for item in existing_save_files:
+                    if item.name[:-4] == save_name:
+                        save_name += "d" # d for duplicate
+                        break
+                
+        os.makedirs(agnostic_destination_directory, exist_ok=True)
+        np.save(os.path.join(agnostic_destination_directory, (prefix+save_name)),labeled_point_cloud_xyz)
+
+    print("")
+    
+    return 0
+
+
+
+def inspect_collected_data(absolute_destination_directory : str, file : int = 0, display_as_3d : bool = False) -> int:
+    agnostic_destination_directory = os.path.normpath(absolute_destination_directory)
+    existing_save_files = list(Path(agnostic_destination_directory).glob('*.npy'))
+
+    if len(existing_save_files) == 0:
+        return 1 # empty
+
+    labeled_point_cloud_xyz = np.load(existing_save_files[file])
+
+    unlabeled_point_cloud_cylindrical = _xyz_to_cylindrical(labeled_point_cloud_xyz[...,:-1], (0.0, 0.0, 0.0))
+
+    projection = _get_sampled_point_cloud(unlabeled_point_cloud_cylindrical, (0.0, 0.0, 0.0, 360.0), return_element = 'index')
+
+    
+    projection =  np.reshape(labeled_point_cloud_xyz[projection.ravel().astype(int), -1], shape = projection.shape)
+
+    plt.figure(1)
+    plt.imshow(projection, cmap = 'magma', aspect = '1')
+    plt.axis('off')
+    plt.title('Labeled LIDAR')
+    plt.show()
+
+    if display_as_3d:
+        fig = px.scatter_3d(
+            x = labeled_point_cloud_xyz[...,0],
+            y = labeled_point_cloud_xyz[...,1],
+            z = labeled_point_cloud_xyz[...,2],
+            color = labeled_point_cloud_xyz[...,-1],
+            color_continuous_scale='Viridis'
+        )
+        fig.update_layout(
+            scene=dict(
+                aspectmode='data'
+            )
+        )
+        fig.show()
+
+    return 0
