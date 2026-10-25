@@ -2,6 +2,13 @@ import torch
 from torch import nn
 
 
+def _masked_max(X: torch.Tensor, valid_points: torch.Tensor) -> torch.Tensor:
+    has_valid_points = valid_points.any(dim=1, keepdim=True)
+    X = X.masked_fill(~valid_points.unsqueeze(-1), float("-inf"))
+    X = torch.max(X, dim=1).values
+    return X.masked_fill(~has_valid_points, 0.0)
+
+
 class Model(nn.Module):
     def __init__(
         self,
@@ -38,19 +45,22 @@ class Model(nn.Module):
         )
 
     def forward(self, X):
+        valid_points = (X != 0.0).any(dim=-1)
+
         if self.tnet1 is not None:
-            transform = self.tnet1(X)
+            transform = self.tnet1(X, valid_points)
             X = torch.bmm(X, transform)
 
         X = self.layers_1(X)
 
-        transform = self.tnet2(X)
+        transform = self.tnet2(X, valid_points)
         X = torch.bmm(X, transform)
 
         X = self.layers_2(X)
-        X = torch.max(X, dim=1).values
+        X = _masked_max(X, valid_points)
 
-        return self.layers_3(X)
+        X = self.layers_3(X)
+        return X.masked_fill(~valid_points.any(dim=1, keepdim=True), 0.0)
 
 
 class _TNet(nn.Module):
@@ -77,11 +87,11 @@ class _TNet(nn.Module):
         with torch.no_grad():
             self.transform[-1].bias.copy_(torch.eye(input_features).flatten())
 
-    def forward(self, X):
+    def forward(self, X, valid_points):
         batch_size= X.shape[0]
 
         Y_pred= self.mlp(X)
-        Y_pred= torch.max(Y_pred, dim= 1, keepdim= False).values
+        Y_pred = _masked_max(Y_pred, valid_points)
         return self.transform(Y_pred).reshape(
             batch_size,
             self.input_features,
