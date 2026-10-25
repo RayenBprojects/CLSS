@@ -5,7 +5,8 @@ import torch
 from dotenv import load_dotenv
 from torch.utils.data import DataLoader
 
-from tools.kitti360 import Kitti
+from data.load.kitti360 import Kitti
+
 from tools.model_viewer import (
     get_sample,
     load_saved_model,
