@@ -27,6 +27,17 @@ def main():
 
         print(f"collecting from drive {i+1}/{11}")
 
+        project_pinhole_data(
+            absolute_image_directory =   Path(KITTI_360_DATASET_DIR / f'data_2d_semantics/train/2013_05_28_drive_00{number}_sync/image_00/instance'),           #f'D:\\Datasets\\KITTI-360\\data_2d_semantics\\train\\2013_05_28_drive_00{number}_sync\\image_00\\instance'),
+            absolute_scan_directory = Path(KITTI_360_DATASET_DIR / f'data_3d_raw/2013_05_28_drive_00{number}_sync/velodyne_points/data'), #Path(f'D:\\Datasets\\KITTI-360\\data_3d_raw\\2013_05_28_drive_00{number}_sync\\velodyne_points\\data'),
+            absolute_destination_directory = Path(KITTI_360_DATASET_DIR / f'all_cylindrical_projections'), #Path(f'D:\\lidar-data-helper\\projects\\2013_05_28_drive_00{number}_sync\\projected_2d_labels'),
+            prefix= f"{number}_",
+            absolute_calibration_directory= Path(KITTI_360_DATASET_DIR / f'calibration'),
+            data_format = 'KITTI',
+            sample_only = False,
+            ignore_duplicates=True
+        )
+
         project_cylindrical_data(
             absolute_image_directory =   Path(KITTI_360_DATASET_DIR / f'data_2d_semantics/train/2013_05_28_drive_00{number}_sync/image_00/instance'),           #f'D:\\Datasets\\KITTI-360\\data_2d_semantics\\train\\2013_05_28_drive_00{number}_sync\\image_00\\instance'),
             absolute_scan_directory = Path(KITTI_360_DATASET_DIR / f'data_3d_raw/2013_05_28_drive_00{number}_sync/velodyne_points/data'), #Path(f'D:\\Datasets\\KITTI-360\\data_3d_raw\\2013_05_28_drive_00{number}_sync\\velodyne_points\\data'),

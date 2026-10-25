@@ -207,12 +207,119 @@ def _cylindrical_to_labeled_point_cloud_xyz(point_cloud_cylindrical, point_cloud
 
 
 
+def _load_KITTI_pinhole_calibration(absolute_calibration_directory : str) -> tuple:
+    calibration_directory = Path(absolute_calibration_directory)
+    perspective_path = calibration_directory / "perspective.txt"
+    cam_to_velo_path = calibration_directory / "calib_cam_to_velo.txt"
+
+    required_keys = ("P_rect_00", "R_rect_00")
+    perspective_data = {}
+    with perspective_path.open("r") as calibration_file:
+        for line in calibration_file:
+            key, separator, values = line.partition(":")
+            key = key.strip()
+            if separator and key in required_keys:
+                try:
+                    perspective_data[key] = np.asarray([float(value) for value in values.split()])
+                except ValueError as error:
+                    raise ValueError(f"Invalid numeric values for {key} in {perspective_path}") from error
+
+    missing_keys = [key for key in required_keys if key not in perspective_data]
+    if missing_keys:
+        raise ValueError(f"Missing {', '.join(missing_keys)} from {perspective_path}")
+
+    projection_matrix = perspective_data["P_rect_00"]
+    rectification_matrix = perspective_data["R_rect_00"]
+    if projection_matrix.size != 12 or rectification_matrix.size != 9:
+        raise ValueError(f"Invalid KITTI camera calibration dimensions in {perspective_path}")
+
+    cam_to_velo = np.vstack((np.loadtxt(cam_to_velo_path).reshape(3, 4), [0.0, 0.0, 0.0, 1.0]))
+    velo_to_cam = np.linalg.inv(cam_to_velo)
+    rectification_transform = np.eye(4)
+    rectification_transform[:3, :3] = rectification_matrix.reshape(3, 3)
+
+    velo_to_image = (
+        projection_matrix.reshape(3, 4)
+        @ rectification_transform
+        @ velo_to_cam
+    )
+    return velo_to_image
+
+
+def _xyz_to_pinhole(point_cloud_xyz : np.array, velo_to_image : np.array, image_shape : tuple) -> np.array:
+    '''
+    Returns (index, pixel_y, pixel_x, range, reflectivity) for points inside the
+    calibrated pinhole camera's full image.
+    '''
+    image_height, image_width = image_shape[:2]
+    xyz = point_cloud_xyz[:, :3]
+    homogeneous_points = np.column_stack((xyz, np.ones(xyz.shape[0])))
+    image_points = (velo_to_image @ homogeneous_points.T).T
+    depths = image_points[:, 2]
+    valid_depth = depths > 0.0
+
+    pixel_x = np.zeros(depths.shape, dtype=int)
+    pixel_y = np.zeros(depths.shape, dtype=int)
+    pixel_x[valid_depth] = np.floor(image_points[valid_depth, 0] / depths[valid_depth]).astype(int)
+    pixel_y[valid_depth] = np.floor(image_points[valid_depth, 1] / depths[valid_depth]).astype(int)
+    valid_pixels = (
+        valid_depth
+        & (pixel_x >= 0)
+        & (pixel_x < image_width)
+        & (pixel_y >= 0)
+        & (pixel_y < image_height)
+    )
+
+    point_indices = np.flatnonzero(valid_pixels)
+    return np.column_stack((
+        point_indices,
+        pixel_y[valid_pixels],
+        pixel_x[valid_pixels],
+        depths[valid_pixels],
+        point_cloud_xyz[valid_pixels, 3],
+    ))
+
+
+
+def _pinhole_to_labeled_point_cloud_xyz(point_cloud_pinhole, point_cloud_xyz, labeled_image, label_decode_function, instance_decode_function) -> np.array:
+    label_matrix = label_decode_function(labeled_image)
+    instance_matrix = instance_decode_function(labeled_image)
+
+    labeled_point_cloud_xyz = np.full(fill_value=-1.0, shape=(point_cloud_xyz.shape[0], point_cloud_xyz.shape[1] + 2))
+    labeled_point_cloud_xyz[..., :-2] = point_cloud_xyz
+
+    if point_cloud_pinhole.shape[0] == 0:
+        return labeled_point_cloud_xyz
+
+    pixel_indices = np.ravel_multi_index(
+        (point_cloud_pinhole[:, 1].astype(int), point_cloud_pinhole[:, 2].astype(int)),
+        label_matrix.shape
+    )
+    nearest_ranges = np.full(label_matrix.size, np.inf)
+    nearest_points = np.full(label_matrix.size, -1, dtype=int)
+
+    for projected_point, pixel_index in zip(point_cloud_pinhole, pixel_indices):
+        if projected_point[3] < nearest_ranges[pixel_index]:
+            nearest_ranges[pixel_index] = projected_point[3]
+            nearest_points[pixel_index] = int(projected_point[0])
+
+    visible_pixels = np.flatnonzero(nearest_points >= 0)
+    labeled_point_cloud_xyz[nearest_points[visible_pixels], -2] = label_matrix.ravel()[visible_pixels]
+    labeled_point_cloud_xyz[nearest_points[visible_pixels], -1] = instance_matrix.ravel()[visible_pixels]
+    return labeled_point_cloud_xyz
+
+
+
 def _get_decoded_KITTI_label(raw_labeled_image : np.array) -> np.array:
-    return (raw_labeled_image/1000.0).astype(int)
+    if np.max(raw_labeled_image) <= 45:
+        return raw_labeled_image.astype(int)
+    return (raw_labeled_image / 1000.0).astype(int)
 
 
 
 def _get_decoded_KITTI_instance(raw_labeled_image : np.array) -> np.array:
+    if np.max(raw_labeled_image) <= 45:
+        return np.zeros(raw_labeled_image.shape, dtype=int)
     return raw_labeled_image - (raw_labeled_image/1000).astype(int)*1000
 
 
@@ -399,8 +506,123 @@ def project_ground_truth_data(absolute_mesh_directory : str, absolute_scan_direc
 
 
 
-def project_pinhole_data(absolute_image_directory : str, absolute_scan_directory: str, absolute_destination_directory : str, prefix : str, LIDAR_relative_xyz : tuple , image_margins : tuple, LIDAR_margins : tuple, data_format : str, sample_only : bool = False, ignore_duplicates : bool = False):
-    pass
+def project_pinhole_data(absolute_image_directory : str, absolute_scan_directory: str, absolute_destination_directory : str, prefix : str, absolute_calibration_directory : str, data_format : str, sample_only : bool = False, ignore_duplicates : bool = False) -> int:
+    '''
+    WARNING: MAKE SURE TO HAVE CLEANED YOUR IMAGE AND SCAN DATA BEFORE RUNNING THIS FUNCTION! MULTIPLE RUNS WILL CAUSE DUPLICATE DATA GENERATION!
+    absolute_calibration_directory must contain KITTI-360's perspective.txt and calib_cam_to_velo.txt files.
+    Projection uses the calibrated camera intrinsics and the full labeled image without cropping.'''
+    get_image_files = {
+        'KITTI' : _get_KITTI_labeled_image_files,
+    }
+
+    get_scan_files = {
+        'KITTI' : _get_KITTI_raw_scan_files,
+    }
+
+    get_point_cloud_xyz = {
+        'KITTI' : _get_KITTI_point_cloud_xyz,
+    }
+
+    agnostic_destination_directory = os.path.normpath(absolute_destination_directory)
+    existing_save_files = list(Path(agnostic_destination_directory).glob('*.npy'))
+    existing_save_names = {item.name[:-4] for item in existing_save_files}
+    agnostic_image_directory = os.path.normpath(absolute_image_directory)
+    agnostic_scan_directory = os.path.normpath(absolute_scan_directory)
+
+    image_files = get_image_files[data_format](agnostic_image_directory)
+    scan_files = get_scan_files[data_format](agnostic_scan_directory)
+    matching_files = []
+
+    for image_file in image_files:
+        for scan_file in scan_files:
+            if image_file.name[:-3] == scan_file.name[:-3]:
+                matching_files.append((image_file, scan_file))
+                if sample_only:
+                    break
+        if sample_only and matching_files:
+            break
+
+    if len(matching_files) == 0:
+        return 1
+
+    velo_to_image = _load_KITTI_pinhole_calibration(absolute_calibration_directory)
+
+    for i, (image_file, scan_file) in enumerate(matching_files):
+        print(f"\rCollecting Pinhole Projection File {i+1}/{len(matching_files)}", end="")
+
+        save_name = image_file.name[:-4]
+        if prefix + save_name in existing_save_names:
+            if ignore_duplicates:
+                continue
+            while prefix + save_name in existing_save_names:
+                save_name += "d"
+
+        with img.open(image_file) as file:
+            labeled_image = np.array(file)
+
+        point_cloud_xyz = get_point_cloud_xyz[data_format](scan_file.resolve())
+        point_cloud_pinhole = _xyz_to_pinhole(
+            point_cloud_xyz,
+            velo_to_image,
+            labeled_image.shape
+        )
+
+        if sample_only:
+            sample_point_cloud_projected = np.full(labeled_image.shape[:2], -1.0)
+            if point_cloud_pinhole.shape[0] > 0:
+                pixel_indices = np.ravel_multi_index(
+                    (point_cloud_pinhole[:, 1].astype(int), point_cloud_pinhole[:, 2].astype(int)),
+                    sample_point_cloud_projected.shape
+                )
+                projected_ranges = sample_point_cloud_projected.ravel()
+                for point, pixel_index in zip(point_cloud_pinhole, pixel_indices):
+                    if projected_ranges[pixel_index] < 0 or point[3] < projected_ranges[pixel_index]:
+                        projected_ranges[pixel_index] = point[3]
+
+            fig, ax = plt.subplots()
+            ax.axis('off')
+            im1 = ax.imshow(labeled_image, aspect='auto')
+            im2 = ax.imshow(sample_point_cloud_projected, cmap='magma', aspect='auto')
+            im2.set_visible(False)
+            current_state = 0
+
+            def toggle(event):
+                nonlocal current_state
+                if current_state == 0:
+                    im1.set_visible(False)
+                    im2.set_visible(True)
+                    ax.set_title('LIDAR')
+                    current_state = 1
+                else:
+                    im2.set_visible(False)
+                    im1.set_visible(True)
+                    ax.set_title('Camera')
+                    current_state = 0
+                fig.canvas.draw()
+
+            ax_button = plt.axes([0.81, 0.05, 0.1, 0.075])
+            button = Button(ax_button, 'Switch')
+            button.on_clicked(toggle)
+            ax.set_title('Camera')
+            plt.show()
+            return 0
+
+        labeled_point_cloud_xyz = _pinhole_to_labeled_point_cloud_xyz(
+            point_cloud_pinhole,
+            point_cloud_xyz,
+            labeled_image,
+            _get_decoded_KITTI_label,
+            _get_decoded_KITTI_instance
+        )
+
+        output_name = prefix + save_name
+        output_path = os.path.join(agnostic_destination_directory, output_name)
+        os.makedirs(agnostic_destination_directory, exist_ok=True)
+        np.save(output_path, labeled_point_cloud_xyz)
+        existing_save_names.add(output_name)
+
+    print("")
+    return 0
 
 
 
