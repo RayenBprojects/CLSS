@@ -1,9 +1,7 @@
 .venv/
 __pycache__/
-testing.py
+temp*.py
 
 .env
 
-data/
-
-models/saved/
+*.npy

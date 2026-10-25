@@ -1,57 +1,51 @@
 import torch
 from torch import nn
-from torch.utils.data import TensorDataset, dataloader
+from torch.utils.data import DataLoader
 from torch import optim
-from torchvision import datasets
 
 from models import pointnetpp
 
 from tools import train_test
-from tools.s3dis import create_s3dis_dataloader
+from data.load.kitti360 import Kitti
 
-import numpy as np
-
-import asyncio
 import os
 import dotenv
 
 
 dotenv.load_dotenv()
-KITTI_360_DATASET_DIR= os.getenv("KITTI_360_DATASET_DIR")
-S3DIS_DATASET_DIR = os.getenv("S3DIS_DATASET_DIR")
+KITTI_360_DATASET_DIR = os.getenv("KITTI_360_DATASET_DIR")
 
 
-async def train_pointnetpp(dataset='s3dis'):
-    results= {}
-    dataloader= 0
-    testing_dataloader= 0
-    num_features= 0
-    epochs= 20
+async def train_pointnetpp(dataset='kitti360'):
+    if dataset != 'kitti360':
+        raise ValueError("Only the KITTI-360 dataset is supported")
 
-    if dataset== 'kitti360': # WIP
-        results['status']= False
-        return results
-        num_features= 19
-    elif dataset == 's3dis':
-        results['dataset'] = 's3dis'
-        dataloader = create_s3dis_dataloader(
-            root=S3DIS_DATASET_DIR or './data/s3dis',
-            batch_size=4,
-            train=True,
-            test_area=6,
-        )
-        testing_dataloader = create_s3dis_dataloader(
-            root=S3DIS_DATASET_DIR or './data/s3dis',
-            batch_size=4,
-            train=False,
-            test_area=6,
-            shuffle=False,
-        )
-        num_features = dataloader.dataset.num_features
+    results = {'dataset': 'KITTI360'}
+    epochs = 3
+
+    dataloader = DataLoader(
+        dataset=Kitti(KITTI_360_DATASET_DIR, label_type='2d', set='train', std_num_points=90000, num_samples=61280),
+        batch_size=1,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True
+    )
+
+    testing_dataloader = DataLoader(
+        dataset=Kitti(KITTI_360_DATASET_DIR, label_type='2d', set='test', std_num_points=90000, num_samples=61280),
+        batch_size=1,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True
+    )
+    num_features = 1
+    num_classes = 46
 
 
     model = pointnetpp.Model(
-        num_classes=13,
+        num_classes=num_classes,
         num_features=num_features,
     )
 
@@ -88,4 +82,5 @@ async def train_pointnetpp(dataset='s3dis'):
     results['status'] = True
     results['loss']= result['loss']
     results['model']= model
+    
     return results

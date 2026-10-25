@@ -1,136 +1,248 @@
 import torch
 from torch import nn
 
-from .pointnet import Model as PointNet
 
-class Model(nn.Module):
-    def __init__(self, num_classes, num_features=6):
-        super().__init__()
+def _gather_points(points: torch.Tensor, indices: torch.Tensor) -> torch.Tensor:
+    batch_indices = torch.arange(points.shape[0], device=points.device)
+    batch_indices = batch_indices.view(points.shape[0], *([1] * (indices.ndim - 1)))
+    return points[batch_indices, indices]
 
-        self.pointnet_1= PointNet(1024, input_features=3 + num_features)
 
-        self.pointnet_2 = PointNet(
-            1024,
-            input_features=3 + 1024,
-            use_input_transform=False,
+def _farthest_point_sample(
+    points: torch.Tensor,
+    num_samples: int,
+    valid_points: torch.Tensor,
+) -> torch.Tensor:
+    """Return FPS indices while retaining only one nearest-distance value per point."""
+    batch_size, point_count = points.shape[:2]
+    if num_samples <= 0:
+        raise ValueError("num_samples must be greater than zero")
+
+    with torch.no_grad():
+        first_indices = torch.multinomial(valid_points.float(), num_samples=1).squeeze(1)
+        sample_indices = torch.empty(
+            (batch_size, num_samples),
+            dtype=torch.long,
+            device=points.device,
         )
-
-        self.unit_pointnet_1= nn.Sequential(
-            nn.Linear(3+1024, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 64)
+        sample_indices[:, 0] = first_indices
+        nearest_distances = torch.full(
+            (batch_size, point_count),
+            float("inf"),
+            dtype=points.dtype,
+            device=points.device,
         )
-
-        self.unit_pointnet_2= nn.Sequential(
-            nn.Linear(3+64, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, num_classes)
-        )
-
-
-    def forward(self, X):
-        fps_1= self._fps(X, 64, X.shape[-1] - 3)
-        
-        batch_size, sample_count, point_count, feature_count = fps_1[1].shape
-        local_features = self.pointnet_1(
-            fps_1[1].reshape(batch_size * sample_count, point_count, feature_count)
-        ).reshape(batch_size, sample_count, -1)
-        abstraction_1= torch.concat((fps_1[0][:,:,:3], local_features), dim= 2)
-
-        fps_2= self._fps(abstraction_1, 16, 1024)
-
-        batch_size, sample_count, point_count, feature_count = fps_2[1].shape
-        local_features = self.pointnet_2(
-            fps_2[1].reshape(batch_size * sample_count, point_count, feature_count)
-        ).reshape(batch_size, sample_count, -1)
-        abstraction_2= torch.concat((fps_2[0][:,:,:3], local_features), dim= 2)
-
-        nearest_indices = fps_2[2].argmin(dim=2)
-
-        batch_indices = torch.arange(
-            abstraction_2.shape[0],
-            device=X.device
-        )[:, None]
-
-        selected_features = abstraction_2[batch_indices, nearest_indices, 3:]
-
-        interpolation_1 = torch.concat((abstraction_1[:, :, :3], selected_features), dim=2)
-
-        interpolation_1= torch.concat((interpolation_1[:,:,:3], self.unit_pointnet_1(interpolation_1)), dim= 2)
-
-        nearest_indices = fps_1[2].argmin(dim=2)
-
-        batch_indices = torch.arange(
-            abstraction_1.shape[0],
-            device=X.device
-        )[:, None]
-
-        selected_features = interpolation_1[batch_indices, nearest_indices, 3:]
-
-        interpolation_2= torch.concat((X[:,:,:3], selected_features), dim= 2)
-
-        interpolation_2= torch.concat((interpolation_2[:,:,:3], self.unit_pointnet_2(interpolation_2)), dim= 2)
-
-        return interpolation_2[:, :, 3:]
-        
-
-
-
-    # Massive PITA; I don't think I can even read this.
-    @staticmethod
-    def _fps(
-        X: torch.Tensor,
-        num_samples: int,
-        num_features: int,
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        batch_size= X.shape[0]
-        num_points= X.shape[1]
-        feature_count= 3+num_features
-
-        sample_points= torch.zeros(batch_size, num_samples, feature_count, device= X.device, dtype= X.dtype)
-
-        initial_indices = torch.multinomial((X != 0.0).any(dim= -1).float(), num_samples= 1).squeeze(1)
-
-        sample_points[:,0,:]= X[torch.arange(0, batch_size, device= X.device), initial_indices]
-
-        distances= torch.zeros(batch_size, num_points, num_samples, device= X.device, dtype= X.dtype)
-
-        for i in range(num_samples-1):
-            distances[:,:,i]= ((X[:,:,:3]-sample_points[:,i,:3].unsqueeze(1))**2).sum(dim= -1, keepdim= False)
-
-            farthest_indices= distances[:,:,:i+1].min(dim= -1, keepdim= False).values.argmax(dim= -1, keepdim= False)
-            sample_points[:,i+1,:]= X[torch.arange(0, batch_size, device= X.device), farthest_indices]
-
-        distances[:, :, -1] = (
-            (X[:, :, :3] - sample_points[:, -1, :3].unsqueeze(1)) ** 2
-        ).sum(dim=-1)
-
-        # Assign every point to its nearest sampled point, then compact each
-        # group into the fixed point dimension. Unused rows remain dummies.
-        # AI generated; must learn:
-        nearest_samples= ((X[:, :, None, :3] - sample_points[:, None, :, :3])**2).sum(dim= -1).argmin(dim= -1)
-        groupings= torch.zeros(batch_size, num_samples, num_points, feature_count, device= X.device, dtype= X.dtype)
+        batch_indices = torch.arange(batch_size, device=points.device)
 
         for sample_index in range(num_samples):
-            belongs_to_sample= nearest_samples == sample_index
-            compact_indices= belongs_to_sample.cumsum(dim= -1) - 1
-            valid_points= belongs_to_sample & (compact_indices < num_points)
+            center = points[batch_indices, sample_indices[:, sample_index], :3]
+            distances = ((points[:, :, :3] - center[:, None, :]) ** 2).sum(dim=-1)
+            nearest_distances = torch.minimum(nearest_distances, distances)
+            nearest_distances = nearest_distances.masked_fill(~valid_points, -1.0)
 
-            valid_indices = valid_points.nonzero()
-            batch_indices = valid_indices[:, 0]
-            source_indices = valid_indices[:, 1]
-            target_indices= compact_indices[batch_indices, source_indices]
-            groupings[batch_indices, sample_index, target_indices]= X[batch_indices, source_indices]
-            groupings[
-                batch_indices, sample_index, target_indices, :3
-            ] -= sample_points[batch_indices, sample_index, :3]
+            if sample_index + 1 < num_samples:
+                sample_indices[:, sample_index + 1] = nearest_distances.argmax(dim=1)
 
-        return sample_points, groupings, distances
+    return sample_indices
+
+
+def _knn_indices(
+    source_xyz: torch.Tensor,
+    query_xyz: torch.Tensor,
+    source_valid: torch.Tensor,
+    num_neighbors: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    """Find bounded neighborhoods without materializing all query/source pairs."""
+    if num_neighbors <= 0:
+        raise ValueError("num_neighbors must be greater than zero")
+    if source_xyz.shape[1] == 0:
+        raise ValueError("Cannot find neighbors in an empty point set")
+
+    neighbor_count = min(num_neighbors, source_xyz.shape[1])
+    with torch.no_grad():
+        distances = torch.cdist(query_xyz, source_xyz)
+        distances = distances.masked_fill(~source_valid[:, None, :], float("inf"))
+        nearest_distances, nearest_indices = distances.topk(
+            neighbor_count,
+            dim=-1,
+            largest=False,
+            sorted=True,
+        )
+        neighbor_valid = torch.isfinite(nearest_distances)
+
+        if neighbor_count < num_neighbors:
+            padding_count = num_neighbors - neighbor_count
+            nearest_indices = torch.nn.functional.pad(
+                nearest_indices,
+                (0, padding_count),
+            )
+            neighbor_valid = torch.nn.functional.pad(
+                neighbor_valid,
+                (0, padding_count),
+                value=False,
+            )
+
+    return nearest_indices, neighbor_valid
+
+
+def _masked_max(features: torch.Tensor, valid_neighbors: torch.Tensor) -> torch.Tensor:
+    features = features.masked_fill(~valid_neighbors.unsqueeze(-1), float("-inf"))
+    pooled = features.max(dim=2).values
+    return pooled.masked_fill(~valid_neighbors.any(dim=2, keepdim=True), 0.0)
+
+
+class _SharedMLP(nn.Module):
+    def __init__(self, input_features: int, output_features: tuple[int, ...]):
+        super().__init__()
+        layers = []
+        for feature_count in output_features:
+            layers.extend((nn.Linear(input_features, feature_count), nn.ReLU()))
+            input_features = feature_count
+        self.layers = nn.Sequential(*layers)
+
+    def forward(self, features: torch.Tensor) -> torch.Tensor:
+        return self.layers(features)
+
+
+class Model(nn.Module):
+    """PointNet++ segmentation with bounded neighborhoods and MRG-style fusion."""
+
+    level1_centers = 256
+    level1_neighbors = 32
+    level2_centers = 64
+    level2_neighbors = 16
+    direct_context_neighbors = 32
+
+    def __init__(self, num_classes: int, num_features: int):
+        super().__init__()
+        self.input_features = 3 + num_features
+
+        self.level1_mlp = _SharedMLP(self.input_features, (64, 64, 128))
+        self.level2_mlp = _SharedMLP(3 + 128, (128, 128))
+        self.direct_context_mlp = _SharedMLP(
+            self.input_features,
+            (64, 128),
+        )
+        self.merge_context = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.ReLU(),
+        )
+        self.feature_propagation = nn.Sequential(
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.ReLU(),
+        )
+        self.segmentation_head = nn.Sequential(
+            nn.Linear(3 + 128, 256),
+            nn.ReLU(),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, num_classes),
+        )
+
+    def forward(self, X: torch.Tensor) -> torch.Tensor:
+        if X.ndim != 3 or X.shape[-1] != self.input_features:
+            raise ValueError(
+                f"Expected input shape (batch, points, {self.input_features}), "
+                f"got {tuple(X.shape)}"
+            )
+
+        valid_points = (X != 0.0).any(dim=-1)
+
+        level1_indices = _farthest_point_sample(
+            X,
+            self.level1_centers,
+            valid_points,
+        )
+        level1_xyz = _gather_points(X[:, :, :3], level1_indices)
+        level1_group_indices, level1_group_valid = _knn_indices(
+            X[:, :, :3],
+            level1_xyz,
+            valid_points,
+            self.level1_neighbors,
+        )
+        level1_group_xyz = (
+            _gather_points(X[:, :, :3], level1_group_indices)
+            - level1_xyz.unsqueeze(2)
+        )
+        level1_group_features = _gather_points(X[:, :, 3:], level1_group_indices)
+        level1_groups = torch.cat((level1_group_xyz, level1_group_features), dim=-1)
+        level1_group_features = self.level1_mlp(level1_groups)
+        level1_features = _masked_max(level1_group_features, level1_group_valid)
+
+        level1_valid = torch.ones(
+            level1_xyz.shape[:2],
+            dtype=torch.bool,
+            device=X.device,
+        )
+        level2_indices = _farthest_point_sample(
+            level1_xyz,
+            self.level2_centers,
+            level1_valid,
+        )
+        level2_xyz = _gather_points(level1_xyz, level2_indices)
+        level2_valid = torch.ones(
+            level2_xyz.shape[:2],
+            dtype=torch.bool,
+            device=X.device,
+        )
+
+        level2_group_indices, level2_group_valid = _knn_indices(
+            level1_xyz,
+            level2_xyz,
+            level1_valid,
+            self.level2_neighbors,
+        )
+        level2_group_xyz = (
+            _gather_points(level1_xyz, level2_group_indices)
+            - level2_xyz.unsqueeze(2)
+        )
+        level2_group_features = _gather_points(level1_features, level2_group_indices)
+        level2_groups = torch.cat((level2_group_xyz, level2_group_features), dim=-1)
+        subregion_features = _masked_max(
+            self.level2_mlp(level2_groups),
+            level2_group_valid,
+        )
+
+        direct_indices, direct_valid = _knn_indices(
+            X[:, :, :3],
+            level2_xyz,
+            valid_points,
+            self.direct_context_neighbors,
+        )
+        direct_xyz = (
+            _gather_points(X[:, :, :3], direct_indices)
+            - level2_xyz.unsqueeze(2)
+        )
+        direct_input_features = _gather_points(X[:, :, 3:], direct_indices)
+        direct_groups = torch.cat((direct_xyz, direct_input_features), dim=-1)
+        direct_features = _masked_max(
+            self.direct_context_mlp(direct_groups),
+            direct_valid,
+        )
+
+        level2_features = self.merge_context(
+            torch.cat((subregion_features, direct_features), dim=-1)
+        )
+
+        level1_context_indices, _ = _knn_indices(
+            level2_xyz,
+            level1_xyz,
+            level2_valid,
+            num_neighbors=1,
+        )
+        level1_context = _gather_points(level2_features, level1_context_indices).squeeze(2)
+        level1_features = self.feature_propagation(
+            torch.cat((level1_features, level1_context), dim=-1)
+        )
+
+        point_context_indices, _ = _knn_indices(
+            level1_xyz,
+            X[:, :, :3],
+            level1_valid,
+            num_neighbors=1,
+        )
+        point_context = _gather_points(level1_features, point_context_indices).squeeze(2)
+        point_features = torch.cat((X[:, :, :3], point_context), dim=-1)
+        return self.segmentation_head(point_features)
