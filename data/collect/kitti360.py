@@ -6,11 +6,9 @@ from matplotlib.widgets import Button
 import plotly.express as px
 from skimage.transform import resize
 from plyfile import PlyData
-from sklearn.neighbors import KDTree
+from scipy.spatial import cKDTree
 import pandas as pd
-from math import sqrt
 from math import pi
-from math import acos
 import os
 
 _PROJECTION_RADIUS = 0.1 #0.0425
@@ -88,63 +86,33 @@ def _xyz_to_cylindrical(point_cloud_xyz : np.array, LIDAR_relative_xyz : tuple) 
     takes array of shape (point_num, 4) with the last dimension being x, y, z, reflectivity and tuple of shape (3) for the x y z adjustments
     returns (index, z, theta, range, reflectivity)
     '''
+    projection_x, projection_y, projection_z = LIDAR_relative_xyz
+    points = point_cloud_xyz.astype(float, copy=False)
+    original_x = points[:, 0]
+    original_y = points[:, 1]
+    original_z = points[:, 2]
+    relative_x = original_x - projection_x
+    relative_y = original_y - projection_y
+    relative_z = original_z - projection_z
 
-    point_cloud_cylindrical = np.full(fill_value= -1.0, shape = (point_cloud_xyz.shape[0], 5))
+    horizontal_distance = np.hypot(relative_x, relative_y)
+    valid_points = horizontal_distance > _PROJECTION_RADIUS
+    point_indices = np.flatnonzero(valid_points)
 
-    projection_x  = LIDAR_relative_xyz[0]
-    projection_y = LIDAR_relative_xyz[1]
-    projection_z = LIDAR_relative_xyz[2]
-
-    for i in range(point_cloud_xyz.shape[0]):
-        point_cloud_cylindrical[i,0] = float(i)
-        cylinder_z = 0.0
-        theta = 0.0        
-        point_range = 0.0
-        reflectivity = point_cloud_xyz[i,3]
-
-        original_x = point_cloud_xyz[i,0]
-        original_y = point_cloud_xyz[i,1]
-        original_z = point_cloud_xyz[i,2]
-
-        if (sqrt((original_x-projection_x)**2 +(original_y - projection_y)**2) <= _PROJECTION_RADIUS):
-            #point_cloud_cylindrical[i,1] = point_cloud_cylindrical[i,2] = point_cloud_cylindrical[i,3] = point_cloud_cylindrical[i,4] = -1.0
-            continue
-
-        cylinder_x = original_x + (projection_x- original_x)*(1-sqrt(_PROJECTION_RADIUS**2/((original_x-projection_x)**2+(original_y-projection_y)**2)))
-        cylinder_y = original_y + (projection_y - original_y)*(1-sqrt(_PROJECTION_RADIUS**2/((original_x-projection_x)**2+(original_y-projection_y)**2)))
-        cylinder_z = original_z + (projection_z - original_z)*(1-sqrt(_PROJECTION_RADIUS**2/((original_x-projection_x)**2+(original_y-projection_y)**2)))
-
-        cosine = (cylinder_x-projection_x)/_PROJECTION_RADIUS
-        sine = (cylinder_y-projection_y)/_PROJECTION_RADIUS
-
-        if cosine >= 1.0:
-            cosine -= 0.001
-        elif cosine <= -1.0:
-            cosine += 0.001
-
-        if sine >= 1.0:
-            sine -= 0.001
-        elif sine <= -1.0:
-            sine += 0.001
-        if sine > 0:
-            theta = acos(cosine)
-        else:
-            theta = 2*pi - acos(cosine)
-
-        theta += pi
-        if theta > 2*pi:
-            theta -= 2*pi
-
-        point_range = sqrt((original_x-projection_x)**2+(original_y-projection_y)**2+(original_z-projection_z)**2)
-
-        point_cloud_cylindrical[i,1] = cylinder_z
-        point_cloud_cylindrical[i,2] = theta
-        point_cloud_cylindrical[i,3] = point_range
-        point_cloud_cylindrical[i,4] = reflectivity
-
-    
-    point_cloud_cylindrical = point_cloud_cylindrical[point_cloud_cylindrical[...,0] > -1.0]
-    return point_cloud_cylindrical
+    relative_x = relative_x[valid_points]
+    relative_y = relative_y[valid_points]
+    relative_z = relative_z[valid_points]
+    radial_scale = _PROJECTION_RADIUS / horizontal_distance[valid_points]
+    cylinder_z = projection_z + relative_z * radial_scale
+    theta = np.mod(np.arctan2(relative_y, relative_x) + pi, 2.0 * pi)
+    point_range = np.sqrt(relative_x**2 + relative_y**2 + relative_z**2)
+    return np.column_stack((
+        point_indices,
+        cylinder_z,
+        theta,
+        point_range,
+        points[valid_points, 3],
+    ))
 
 
 
@@ -471,10 +439,10 @@ def project_ground_truth_data(absolute_mesh_directory : str, absolute_scan_direc
         ax.set_aspect('equal')
         plt.show()'''
 
-        tree = KDTree(static_mesh[...,:-2], leaf_size=32, metric='euclidean')
-        dist, idx = tree.query(point_cloud_xyz_transformed, k=1)
-        labeled_point_cloud_xyz[...,4] = static_mesh[idx[:,0],-2]
-        labeled_point_cloud_xyz[...,5] = static_mesh[idx[:,0],-1]-static_mesh[idx[:,0],-2]*1000
+        tree = cKDTree(static_mesh[...,:-2], leafsize=32)
+        dist, idx = tree.query(point_cloud_xyz_transformed, k=1, workers=-1)
+        labeled_point_cloud_xyz[...,4] = static_mesh[idx,-2]
+        labeled_point_cloud_xyz[...,5] = static_mesh[idx,-1]-static_mesh[idx,-2]*1000
 
         '''fig = px.scatter_3d(labeled_point_cloud_xyz, 
                             x=0, 
