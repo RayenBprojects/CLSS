@@ -5,7 +5,7 @@ from data.collect.kitti360 import project_cylindrical_data, project_ground_truth
 import os
 import dotenv
 
-CLEAN_EXISTING= True
+CLEAN_EXISTING= False
 REMOVE_MISMATCH= True
 
 

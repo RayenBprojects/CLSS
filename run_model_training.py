@@ -31,28 +31,31 @@ def main():
     parser.add_argument("--dataset", choices=("kitti360",), default="kitti360")
     args = parser.parse_args()
 
-    results = asyncio.run(train_pointnetpp(dataset=args.dataset))
+    model= None
+    print("-- Training --")
+    for i in range(5):
+        results = asyncio.run(train_pointnetpp(dataset=args.dataset, input_model= model, batch_size= 10, num_epochs= 2, start_epoch= i*2))
 
-    if results["status"]:
-        dataset = results['dataset']
-        model = results["model"]
-        model.eval()
+        if results["status"]:
+            dataset = results['dataset']
+            model = results["model"]
+            model.eval()
 
-        save_dir = Path("./models/saved")
-        save_dir.mkdir(parents=True, exist_ok=True)
-        model_path = next_model_path(save_dir, dataset)
-        model = model.cpu().eval()
-        input_features = model.input_features
-        example_input = torch.rand(1, 64, input_features)
-        exported_model = torch.export.export(
-            model,
-            (example_input,),
-            dynamic_shapes={
-                "X": {1: torch.export.Dim("num_points", min=64)},
-            },
-        )
-        torch.export.save(exported_model, str(model_path))
-        print(f"Saved standalone model to {model_path}")
+            save_dir = Path("./models/saved")
+            save_dir.mkdir(parents=True, exist_ok=True)
+            model_path = next_model_path(save_dir, dataset)
+            model = model.cpu().eval()
+            input_features = model.input_features
+            example_input = torch.rand(1, 64, input_features)
+            exported_model = torch.export.export(
+                model,
+                (example_input,),
+                dynamic_shapes={
+                    "X": {1: torch.export.Dim("num_points", min=64)},
+                },
+            )
+            torch.export.save(exported_model, str(model_path))
+            print(f"Saved standalone model to {model_path}")
 
 if __name__ == "__main__":
     main()
