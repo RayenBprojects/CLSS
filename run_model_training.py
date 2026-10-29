@@ -35,9 +35,10 @@ def main():
     args = parser.parse_args()
 
     model= None
+    print(f"Optim: {args.optim} | Learning Rate: {args.learning_rate}")
     print("-- Training --")
     for i in range(int(args.num_epochs)):
-        print(f"Optim: {args.optim} | Learning Rate: {args.learning_rate}")
+        
         results = asyncio.run(train_pointnetpp(input_model= model, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i))
 
         if results["status"]:
