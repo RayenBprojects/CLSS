@@ -10,7 +10,7 @@ import torch
 from core import train_pointnetpp
 
 
-def next_model_path(save_dir: Path, dataset: str) -> Path:
+def next_model_path(save_dir: Path, dataset: str, prefix: str | None= None) -> Path:
     existing = (
         *save_dir.glob("[0-9][0-9][0-9][0-9]_*.pt"),
         *save_dir.glob("[0-9][0-9][0-9][0-9]_*.pt2"),
@@ -28,13 +28,17 @@ def next_model_path(save_dir: Path, dataset: str) -> Path:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", choices=("kitti360",), default="kitti360")
+    parser.add_argument("--batch_size", default= 20)
+    parser.add_argument("--learning_rate", default= 1e-3)
+    parser.add_argument("--num_epochs", default= 5)
+    parser.add_argument("--optim", choices= ("Adam", "SGD"), default= "Adam")
     args = parser.parse_args()
 
     model= None
     print("-- Training --")
-    for i in range(5):
-        results = asyncio.run(train_pointnetpp(dataset=args.dataset, input_model= model, batch_size= 10, num_epochs= 2, start_epoch= i*2))
+    for i in range(int(args.num_epochs)):
+        print(f"Optim: {args.optim} | Learning Rate: {args.learning_rate}")
+        results = asyncio.run(train_pointnetpp(input_model= model, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i))
 
         if results["status"]:
             dataset = results['dataset']
@@ -56,6 +60,6 @@ def main():
             )
             torch.export.save(exported_model, str(model_path))
             print(f"Saved standalone model to {model_path}")
-
+    print("-- DONE --")
 if __name__ == "__main__":
     main()

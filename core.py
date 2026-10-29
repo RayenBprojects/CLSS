@@ -64,9 +64,8 @@ WEIGHTS= [
 0.0
 ]
 
-async def train_pointnetpp(dataset='kitti360', input_model= None, batch_size= 20, num_epochs= 10, start_epoch= 0):
-    if dataset != 'kitti360':
-        raise ValueError("Only the KITTI-360 dataset is supported")
+async def train_pointnetpp(input_model= None, batch_size= 20, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0):
+    dataset= 'kitti360'
 
     results = {'dataset': 'KITTI360'}
     epochs = num_epochs
@@ -106,8 +105,7 @@ async def train_pointnetpp(dataset='kitti360', input_model= None, batch_size= 20
 
     loss_function = nn.CrossEntropyLoss(ignore_index=-1, weight= torch.tensor(WEIGHTS).to(device))
 
-    #optimizer= optim.SGD(model.parameters(), lr= 1e-2)
-    optimizer= optim.Adam(model.parameters(), lr= 1e-1)
+    optimizer= optim.Adam(model.parameters(), lr= learning_rate) if optimizer_choice == "Adam" else optim.SGD(model.parameters(), lr= learning_rate)
 
     for i in range(epochs):
         print(f"-Epoch {i+1+start_epoch}-")
