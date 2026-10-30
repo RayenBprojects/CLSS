@@ -64,7 +64,7 @@ WEIGHTS= [
 0.0
 ]
 
-async def train_pointnetpp(input_model= None, batch_size= 20, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0):
+async def train_pointnetpp(input_model= None, batch_size= 20, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0, print_batch_data= True):
     dataset= 'kitti360'
 
     results = {'dataset': 'KITTI360'}
@@ -115,8 +115,9 @@ async def train_pointnetpp(input_model= None, batch_size= 20, learning_rate= 1e-
                 device=device,
                 loss_fn=loss_function,
                 optimizer=optimizer,
+                print_batch_data= print_batch_data
             )
-        print(f"Training | loss= {result['loss']} | time= {result['time']} hours")
+        print(f"Training | loss= {result['loss']} | overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']} | time= {result['time']} hours")
 
         result = await train_test.test(
             model= model,

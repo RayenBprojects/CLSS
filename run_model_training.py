@@ -32,6 +32,7 @@ def main():
     parser.add_argument("--learning_rate", default= 1e-3)
     parser.add_argument("--num_epochs", default= 5)
     parser.add_argument("--optim", choices= ("Adam", "SGD"), default= "Adam")
+    parser.add_argument("-p", "--print_batch_data", action= 'store_true')
     args = parser.parse_args()
 
     model= None
@@ -39,7 +40,7 @@ def main():
     print("-- Training --")
     for i in range(int(args.num_epochs)):
         
-        results = asyncio.run(train_pointnetpp(input_model= model, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i))
+        results = asyncio.run(train_pointnetpp(input_model= model, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i, print_batch_data= args.print_batch_data))
 
         if results["status"]:
             dataset = results['dataset']
