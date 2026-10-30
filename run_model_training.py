@@ -63,5 +63,6 @@ def main():
             torch.export.save(exported_model, str(model_path))
             print(f"Saved standalone model to {model_path}")
     print("-- DONE --")
+    
 if __name__ == "__main__":
     main()

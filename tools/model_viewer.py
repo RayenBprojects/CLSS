@@ -5,22 +5,27 @@ import numpy as np
 import open3d as o3d
 import torch
 
+import os
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_saved_model(dataset: str, model_path: str | None, device: torch.device):
     if model_path is None:
-        saved_models = sorted(
-            (ROOT / "models" / "saved").glob(f"[0-9][0-9][0-9][0-9]_{dataset}.pt2"),
-            key=lambda path: int(path.name.split("_", maxsplit=1)[0]),
-        )
-        if not saved_models:
-            raise FileNotFoundError(
-                f"No saved {dataset} model found in {ROOT / 'models' / 'saved'}; "
-                "train one with run.py or pass --model."
+        if "sample_model.pt2" not in next(os.walk(ROOT/ "models" / "saved"))[2]:
+            saved_models = sorted(
+                (ROOT / "models" / "saved").glob(f"[0-9][0-9][0-9][0-9]_{dataset}.pt2"),
+                key=lambda path: int(path.name.split("_", maxsplit=1)[0]),
             )
-        model_path = str(saved_models[-1])
+            if not saved_models:
+                raise FileNotFoundError(
+                    f"No saved {dataset} model found in {ROOT / 'models' / 'saved'}; "
+                    "train one with run.py or pass --model."
+                )
+            model_path = str(saved_models[-1])
+        else:
+            model_path= ROOT/ "models" / "saved" / "sample_model.pt2"
 
     path = Path(model_path).expanduser().resolve()
     if not path.is_file():
