@@ -242,7 +242,7 @@ async def train_pointnetpp(input_model= None, batch_size= 20, learning_rate= 1e-
             device=device,
             loss_fn=loss_function,
         )
-        print(f"Testing | loss= {result['loss']}")
+        print(f"Testing | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
 
     results['status'] = True
     results['loss']= result['loss']
