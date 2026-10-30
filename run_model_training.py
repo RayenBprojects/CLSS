@@ -28,7 +28,7 @@ def next_model_path(save_dir: Path, dataset: str, prefix: str | None= None) -> P
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--batch_size", default= 20)
+    parser.add_argument("--batch_size", default= 16)
     parser.add_argument("--learning_rate", default= 1e-3)
     parser.add_argument("--num_epochs", default= 5)
     parser.add_argument("--optim", choices= ("Adam", "SGD"), default= "Adam")
