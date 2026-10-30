@@ -2,6 +2,9 @@
 __pycache__/
 temp*
 
+models/saved/*
+!/models/saved/sample_model.pt2
+
 .env
 
 *.npy
