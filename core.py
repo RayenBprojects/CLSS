@@ -7,6 +7,7 @@ from models import pointnetpp
 
 from tools import train_test
 from tools.model_viewer import load_saved_model
+from tools.accuracy import OAcc, MAcc, MIoU
 from data.load.kitti360 import Kitti
 
 import os
@@ -19,6 +20,7 @@ from data.collect.kitti360 import project_cylindrical_data, project_ground_truth
 
 dotenv.load_dotenv()
 KITTI_360_DATASET_DIR = os.getenv("KITTI_360_DATASET_DIR")
+
 
 WEIGHTS= [
 1.4129499197006226,
@@ -68,6 +70,7 @@ WEIGHTS= [
 0.012485727667808533,
 0.0
 ]
+
 
 def collect_kitti_data(clean_existing_files : bool = False):
     dotenv.load_dotenv()
@@ -306,3 +309,63 @@ def compare_models(truth_model_name, model_name, batch_size= 16, print_batch_dat
     result= train_test.compare(truth_model=truth_model, model=model, dataloader=dataloader, device= device, loss_fn=loss_function, print_batch_data=print_batch_data)
 
     print(f"Comparison | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
+
+
+def evaluate_data(projection_type, batch_size= 16, print_batch_data= True):
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is required")
+
+    device = torch.device("cuda")
+
+    ground_truth_dataset= Kitti(
+        directory= KITTI_360_DATASET_DIR,
+        projection_type= 'ground_truth',
+        set= 'train',
+        split= False
+    )
+
+    ground_truth_dataloader= DataLoader(dataset= ground_truth_dataset, batch_size= batch_size)
+
+    dataset= Kitti(
+        directory= KITTI_360_DATASET_DIR,
+        projection_type= projection_type,
+        set= 'train',
+        split= False
+    )
+
+    dataloader= DataLoader(dataset= dataset, batch_size= batch_size)
+
+    oAcc= OAcc()
+    mAcc= MAcc()
+    mIoU= MIoU()
+
+    num_batches= len(ground_truth_dataloader)
+
+    print("-- Running Evaluation --")
+    for index, (ground_truth_data, data) in enumerate(zip(ground_truth_dataloader, dataloader)):
+        for i in range(2):
+            ground_truth_data[i], data[i]= ground_truth_data[i].to(device), data[i].to(device)
+
+        valid_points= ((ground_truth_data[0] != 0).any(dim= -1)) & ((data[0] != 0).any(dim= -1) )
+
+        if not valid_points.any():
+                    raise ValueError("A batch contains no valid points")
+
+        ground_truth_data, data= ground_truth_data[1].to(device), data[1].to(device) # saves memory
+
+        labels= torch.arange(46).to(device)
+
+        oAcc.calculate_oAcc(ground_truth_data, data, valid_points)
+        mAcc.calculate_mAcc(ground_truth_data, data, labels, valid_points)
+        mIoU.calculate_mIoU(ground_truth_data, data, labels, valid_points)
+
+        if print_batch_data:
+            print(f"\r{projection_type[0].upper()+projection_type[1:]} batch {index+1}/{num_batches}: overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
+        
+
+    if print_batch_data:
+        print("\r")
+    else:
+        print("")
+
+    print(f"{projection_type[0].upper()+projection_type[1:]}: overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}")
