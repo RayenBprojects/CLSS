@@ -4,7 +4,7 @@ import time
 
 from tools.accuracy import OAcc, MAcc, MIoU
 
-async def train(model, dataloader, device, loss_fn, optimizer, print_batch_data= True):
+def train(model, dataloader, device, loss_fn, optimizer, print_batch_data= True) -> dict[str: float]:
     start_time= time.perf_counter()
     model.train()
 
@@ -50,12 +50,12 @@ async def train(model, dataloader, device, loss_fn, optimizer, print_batch_data=
     return {'loss': returned_loss / num_batches, 'oAcc' : oAcc.get_oAcc(), 'mAcc' : mAcc.get_mAcc(), 'mIoU' : mIoU.get_mIoU(), 'time': execution_time}
 
 
-async def test(model, dataloader, device, loss_fn) -> dict[str: float]:
+def test(model, dataloader, device, loss_fn, print_batch_data= True) -> dict[str: float]:
     model.eval()
 
     num_batches = len(dataloader)
     if num_batches == 0:
-        raise ValueError("The testing dataloader is empty")
+        raise ValueError("The dataloader is empty")
 
     loss = 0.0
 
@@ -64,11 +64,11 @@ async def test(model, dataloader, device, loss_fn) -> dict[str: float]:
     mIoU= MIoU()
 
     with torch.no_grad():
-        for X, Y in dataloader:
+        for index, (X, Y) in enumerate(dataloader):
             X, Y= X.to(device), Y.to(device)
             valid_points = (X != 0.0).any(dim=-1)
             if not valid_points.any():
-                raise ValueError("A testing batch contains no valid points")
+                raise ValueError("A batch contains no valid points")
 
             Y_pred = model(X)
 
@@ -79,5 +79,54 @@ async def test(model, dataloader, device, loss_fn) -> dict[str: float]:
             mIoU.calculate_mIoU(Y_pred_choice, Y, labels, valid_points)
 
             loss += loss_fn(Y_pred[valid_points], Y[valid_points]).item()
+
+            if print_batch_data:
+                print(f"\rBatch {index+1} | loss= {loss} | overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
+    if print_batch_data:
+        print("\r")
+    else:
+        print("")
+
+    return {'loss' : float(loss)/num_batches, 'oAcc' : oAcc.get_oAcc(), 'mAcc' : mAcc.get_mAcc(), 'mIoU' : mIoU.get_mIoU()}
+
+
+def compare(truth_model, model, dataloader, device, loss_fn, print_batch_data= True) -> dict[str: float]:
+    truth_model.eval()
+    model.eval()
+
+    num_batches = len(dataloader)
+    if num_batches == 0:
+        raise ValueError("The dataloader is empty")
+
+    oAcc = OAcc()
+    mAcc= MAcc()
+    mIoU= MIoU()
+
+    loss= 0.0
+
+    with torch.no_grad():
+        for index, (X, Y) in enumerate(dataloader):
+            X= X.to(device)
+            valid_points = (X != 0.0).any(dim=-1)
+            if not valid_points.any():
+                raise ValueError("A batch contains no valid points")
+            
+            truth_Y, Y= truth_model(X), model(X)
+
+            labels= torch.arange(truth_Y.shape[-1]).to(device)
+            truth_Y_choice= torch.argmax(truth_Y, dim= -1)
+            Y_choice= torch.argmax(Y, dim= -1)
+            oAcc.calculcate_oAcc(Y_choice, truth_Y_choice, valid_points)
+            mAcc.calculate_mAcc(Y_choice, truth_Y_choice, labels, valid_points)
+            mIoU.calculate_mIoU(Y_choice, truth_Y_choice, labels, valid_points)
+
+            loss += loss_fn(Y[valid_points], torch.argmax(truth_Y, dim= -1)).item()
+
+            if print_batch_data:
+                print(f"\rBatch {index+1} | loss= {loss} | overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
+    if print_batch_data:
+        print("\r")
+    else:
+        print("")
 
     return {'loss' : float(loss)/num_batches, 'oAcc' : oAcc.get_oAcc(), 'mAcc' : mAcc.get_mAcc(), 'mIoU' : mIoU.get_mIoU()}
