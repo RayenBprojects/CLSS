@@ -1,4 +1,3 @@
-import asyncio
 import argparse
 from pathlib import Path
 
@@ -41,10 +40,10 @@ def main():
     print("-- Training --")
     for i in range(int(args.num_epochs)):
         
-        results = asyncio.run(train_pointnetpp(input_model= model, projection_type= args.projection_type, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i, print_batch_data= args.print_batch_data))
+        results = train_pointnetpp(input_model= model, projection_type= args.projection_type, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i, print_batch_data= args.print_batch_data)
 
         if results["status"]:
-            dataset = results['dataset']
+            dataset = "kitti360"
             model = results["model"]
             model.eval()
 

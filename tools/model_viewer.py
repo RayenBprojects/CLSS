@@ -11,7 +11,7 @@ import os
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def load_saved_model(dataset: str | None, model_path: str | None, device: torch.device):
+def load_saved_model(model_path: str | None, device: torch.device, dataset: str | None= None):
     if model_path is None:
         if "sample_model.pt2" not in next(os.walk(ROOT/ "models" / "saved"))[2]:
             saved_models = sorted(
