@@ -55,7 +55,7 @@ _semantic_ID_dict = {
 }
 
 class Kitti(Dataset):
-    def __init__(self, directory, projection_type, set, force_organize= False, std_num_points=124792, num_samples= 61280, force_num_samples= False): #124792 | 61280
+    def __init__(self, directory, projection_type, set, force_organize= False, std_num_points=124792, num_samples= 61280, force_num_samples= False, split= True, split_locations= (0.8, 0.9)): #124792 | 61280
 
         if num_samples < 10:
                     raise Exception(f"Invalid number of samples. Minimum 10 samples needed.")
@@ -114,9 +114,14 @@ class Kitti(Dataset):
 
         np.save(Path("./data/saved/kitti360_selection/kitti_selection.npy"), self.selection)
 
-        indices= {'train': (0, int(0.8*num_samples)),
-                  'test': (int(0.8*num_samples), int(0.9*num_samples)),
-                  'eval': (int(0.9*num_samples), num_samples)}
+        indices= {}
+
+        if split:
+            indices['train']= (0, int(split_locations[0]*num_samples))
+            indices['test']= (int(split_locations[0]*num_samples), int(split_locations[1]*num_samples))
+            indices['eval']= (int(split_locations[1]*num_samples), num_samples)
+        else:
+            indices['train']= indices['test']= indices['eval']= (0, num_samples)
 
         self.file_paths= {
             'ground_truth': [],

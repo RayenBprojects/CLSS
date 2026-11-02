@@ -48,7 +48,7 @@ class OAcc:
         self._sum_correct = None
         self._sum_total = None
 
-    def calculcate_oAcc(
+    def calculate_oAcc(
         self,
         predicted_Y: torch.Tensor,
         ground_truth_Y: torch.Tensor,
@@ -141,35 +141,3 @@ class MIoU:
 
     def get_mIoU(self) -> float:
         return _mean_present_classes(self._intersection_sum, self._union_sum)
-
-
-def get_oAcc(
-    predicted_Y: torch.Tensor,
-    ground_truth_Y: torch.Tensor,
-    valid_mask: torch.Tensor | None = None,
-) -> float:
-    metric = OAcc()
-    metric.calculcate_oAcc(predicted_Y, ground_truth_Y, valid_mask)
-    return metric.get_oAcc()
-
-
-def get_mAcc(
-    predicted_Y: torch.Tensor,
-    ground_truth_Y: torch.Tensor,
-    labels: torch.Tensor,
-    valid_mask: torch.Tensor | None = None,
-) -> float:
-    metric = MAcc()
-    metric.calculate_mAcc(predicted_Y, ground_truth_Y, labels, valid_mask)
-    return metric.get_mAcc()
-
-
-def get_mIoU(
-    predicted_Y: torch.Tensor,
-    ground_truth_Y: torch.Tensor,
-    labels: torch.Tensor,
-    valid_mask: torch.Tensor | None = None,
-) -> float:
-    metric = MIoU()
-    metric.calculate_mIoU(predicted_Y, ground_truth_Y, labels, valid_mask)
-    return metric.get_mIoU()

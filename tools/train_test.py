@@ -28,7 +28,7 @@ async def train(model, dataloader, device, loss_fn, optimizer, print_batch_data=
 
         labels= torch.arange(Y_pred.shape[-1]).to(device)
         Y_pred_choice= torch.argmax(Y_pred, dim= -1)
-        oAcc.calculcate_oAcc(Y_pred_choice, Y, valid_points)
+        oAcc.calculate_oAcc(Y_pred_choice, Y, valid_points)
         mAcc.calculate_mAcc(Y_pred_choice, Y, labels, valid_points)
         mIoU.calculate_mIoU(Y_pred_choice, Y, labels, valid_points)
 
@@ -74,7 +74,7 @@ async def test(model, dataloader, device, loss_fn) -> dict[str: float]:
 
             labels= torch.arange(Y_pred.shape[-1]).to(device)
             Y_pred_choice= torch.argmax(Y_pred, dim= -1)
-            oAcc.calculcate_oAcc(Y_pred_choice, Y, valid_points)
+            oAcc.calculate_oAcc(Y_pred_choice, Y, valid_points)
             mAcc.calculate_mAcc(Y_pred_choice, Y, labels, valid_points)
             mIoU.calculate_mIoU(Y_pred_choice, Y, labels, valid_points)
 
