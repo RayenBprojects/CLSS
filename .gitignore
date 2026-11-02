@@ -8,3 +8,5 @@ models/saved/*
 .env
 
 *.npy
+
+nohup.out

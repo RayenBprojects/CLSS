@@ -182,7 +182,7 @@ def collect_kitti_data(clean_existing_files : bool = False):
         (KITTI_360_DATASET_DIR/f'all_pinhole_projections/{item}').unlink(missing_ok= True)
 
 
-async def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_size= 20, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0, print_batch_data= True):
+def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_size= 16, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0, print_batch_data= True):
     results = {}
     epochs = num_epochs
 
@@ -251,7 +251,7 @@ async def train_pointnetpp(input_model= None, projection_type= "ground_truth", b
     return results
 
 
-def evaluate_model(model_name, projection_type= "ground_truth", batch_size= 20, print_batch_data= True):
+def evaluate_model(model_name, projection_type= "ground_truth", batch_size= 16, print_batch_data= True):
     dataloader= DataLoader(
         dataset= Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='eval', std_num_points=90000, num_samples=61280),
         batch_size=batch_size,
@@ -282,7 +282,7 @@ def evaluate_model(model_name, projection_type= "ground_truth", batch_size= 20, 
     print(f"Evaluation | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
 
 
-def compare_models(truth_model_name, model_name, batch_size= 20, print_batch_data= True):
+def compare_models(truth_model_name, model_name, batch_size= 16, print_batch_data= True):
     dataloader= DataLoader(
         dataset= Kitti(KITTI_360_DATASET_DIR, projection_type="ground_truth", set='eval', std_num_points=90000, num_samples=61280),
         batch_size=batch_size,

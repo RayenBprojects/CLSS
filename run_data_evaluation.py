@@ -25,7 +25,10 @@ def main():
 
     KITTI_360_DATASET_DIR= Path(os.getenv("KITTI_360_DATASET_DIR"))
 
-    device= accelerator.current_accelerator() if accelerator.is_available() else "cpu"
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is required to train this model")
+
+    device = torch.device("cuda")
 
     ground_truth_dataset= Kitti(
         directory= KITTI_360_DATASET_DIR,
@@ -59,8 +62,10 @@ def main():
         'cylindrical' : {'oAcc': OAcc(), 'mAcc': MAcc(), 'mIoU' : MIoU()}
     }
 
+    num_batches= len(ground_truth_dataloader)
+
     print("-- Running Evaluation --")
-    for ground_truth_data, pinhole_data, cylindrical_data in zip(ground_truth_dataloader, pinhole_dataloader, cylindrical_dataloader):
+    for index, (ground_truth_data, pinhole_data, cylindrical_data) in enumerate(zip(ground_truth_dataloader, pinhole_dataloader, cylindrical_dataloader)):
         for i in range(2):
             ground_truth_data[i], pinhole_data[i], cylindrical_data[i]= ground_truth_data[i].to(device), pinhole_data[i].to(device), cylindrical_data[i].to(device)
 
@@ -70,15 +75,20 @@ def main():
 
         ground_truth_data, pinhole_data, cylindrical_data= ground_truth_data[1].to(device), pinhole_data[1].to(device), cylindrical_data[1].to(device) # saves memory
 
-        labels= torch.arange(ground_truth_data.shape[-1]).to(device)
+        labels= torch.arange(46).to(device)
+
+        print(f"\rBatch {index+1}/{num_batches}", end= "")
 
         metrics['pinhole']['oAcc'].calculate_oAcc(ground_truth_data, pinhole_data, valid_points)
         metrics['pinhole']['mAcc'].calculate_mAcc(ground_truth_data, pinhole_data, labels, valid_points)
         metrics['pinhole']['mIoU'].calculate_mIoU(ground_truth_data, pinhole_data, labels, valid_points)
+        
 
         metrics['cylindrical']['oAcc'].calculate_oAcc(ground_truth_data, cylindrical_data, valid_points)
         metrics['cylindrical']['mAcc'].calculate_mAcc(ground_truth_data, cylindrical_data, labels, valid_points)
         metrics['cylindrical']['mIoU'].calculate_mIoU(ground_truth_data, cylindrical_data, labels, valid_points)
+
+    print("\r")
 
     print(f"Pinhole projection: overall accuracy= {metrics['pinhole']['oAcc'].get_oAcc()} | mean class accuracy= {metrics['pinhole']['mAcc'].get_mAcc()} | mean intersection over union= {metrics['pinhole']['mIoU'].get_mIoU()}")
     print(f"Cylindrical projection: overall accuracy= {metrics['cylindrical']['oAcc'].get_oAcc()} | mean class accuracy= {metrics['cylindrical']['mAcc'].get_mAcc()} | mean intersection over union= {metrics['cylindrical']['mIoU'].get_mIoU()}")
