@@ -181,14 +181,14 @@ def collect_kitti_data(clean_existing_files : bool = False):
         (KITTI_360_DATASET_DIR/f'all_pinhole_projections/{item}').unlink(missing_ok= True)
 
 
-async def train_pointnetpp(input_model= None, batch_size= 20, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0, print_batch_data= True):
+async def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_size= 20, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0, print_batch_data= True):
     dataset= 'kitti360'
 
     results = {'dataset': 'KITTI360'}
     epochs = num_epochs
 
     dataloader = DataLoader(
-        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type='ground_truth', set='train', std_num_points=90000, num_samples=61280), #124792 | 61280
+        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='train', std_num_points=90000, num_samples=61280), #124792 | 61280
         batch_size=batch_size,
         shuffle=True,
         num_workers=4,
@@ -197,7 +197,7 @@ async def train_pointnetpp(input_model= None, batch_size= 20, learning_rate= 1e-
     )
 
     testing_dataloader = DataLoader(
-        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type='ground_truth', set='test', std_num_points=90000, num_samples=61280), #124792 | 61280
+        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='test', std_num_points=90000, num_samples=61280), #124792 | 61280
         batch_size=batch_size,
         shuffle=True,
         num_workers=4,
