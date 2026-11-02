@@ -21,8 +21,10 @@ def main():
     parser.add_argument("-p", "--print_batch_data", action= "store_true")
     args= parser.parse_args()
 
+    print("-- Evaluating Data --")
     evaluate_data(projection_type= 'pinhole', batch_size= int(args.batch_size), print_batch_data= args.print_batch_data)
     evaluate_data(projection_type= 'cylindrical', batch_size= int(args.batch_size), print_batch_data= args.print_batch_data)
+    print("-- Done --")
 
 
 if __name__ == "__main__":

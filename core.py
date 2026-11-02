@@ -341,7 +341,6 @@ def evaluate_data(projection_type, batch_size= 16, print_batch_data= True):
 
     num_batches= len(ground_truth_dataloader)
 
-    print("-- Running Evaluation --")
     for index, (ground_truth_data, data) in enumerate(zip(ground_truth_dataloader, dataloader)):
         for i in range(2):
             ground_truth_data[i], data[i]= ground_truth_data[i].to(device), data[i].to(device)
