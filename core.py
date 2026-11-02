@@ -6,6 +6,7 @@ from torch import optim
 from models import pointnetpp
 
 from tools import train_test
+from tools.model_viewer import load_saved_model
 from data.load.kitti360 import Kitti
 
 import os
@@ -181,14 +182,12 @@ def collect_kitti_data(clean_existing_files : bool = False):
         (KITTI_360_DATASET_DIR/f'all_pinhole_projections/{item}').unlink(missing_ok= True)
 
 
-async def train_pointnetpp(input_model= None, batch_size= 20, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0, print_batch_data= True):
-    dataset= 'kitti360'
-
-    results = {'dataset': 'KITTI360'}
+async def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_size= 20, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0, print_batch_data= True):
+    results = {}
     epochs = num_epochs
 
     dataloader = DataLoader(
-        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type='ground_truth', set='train', std_num_points=90000, num_samples=61280), #124792 | 61280
+        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='train', std_num_points=90000, num_samples=61280), #124792 | 61280
         batch_size=batch_size,
         shuffle=True,
         num_workers=4,
@@ -197,7 +196,7 @@ async def train_pointnetpp(input_model= None, batch_size= 20, learning_rate= 1e-
     )
 
     testing_dataloader = DataLoader(
-        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type='ground_truth', set='test', std_num_points=90000, num_samples=61280), #124792 | 61280
+        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='test', std_num_points=90000, num_samples=61280), #124792 | 61280
         batch_size=batch_size,
         shuffle=True,
         num_workers=4,
@@ -226,7 +225,7 @@ async def train_pointnetpp(input_model= None, batch_size= 20, learning_rate= 1e-
 
     for i in range(epochs):
         print(f"-Epoch {i+1+start_epoch}-")
-        result = await train_test.train(
+        result = train_test.train(
                 model=model,
                 dataloader=dataloader,
                 device=device,
@@ -236,11 +235,12 @@ async def train_pointnetpp(input_model= None, batch_size= 20, learning_rate= 1e-
             )
         print(f"Training | loss= {result['loss']} | overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']} | time= {result['time']} hours")
 
-        result = await train_test.test(
+        result = train_test.test(
             model= model,
             dataloader=testing_dataloader,
             device=device,
             loss_fn=loss_function,
+            print_batch_data=print_batch_data
         )
         print(f"Testing | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
 
@@ -249,3 +249,60 @@ async def train_pointnetpp(input_model= None, batch_size= 20, learning_rate= 1e-
     results['model']= model
     
     return results
+
+
+def evaluate_model(model_name, projection_type= "ground_truth", batch_size= 20, print_batch_data= True):
+    dataloader= DataLoader(
+        dataset= Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='eval', std_num_points=90000, num_samples=61280),
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True
+    )
+
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is required to train this model")
+    
+    device = torch.device("cuda")
+
+    models_directory= Path("./models/saved/")
+    model= load_saved_model(model_path= models_directory/model_name, device= device)[0]
+
+    loss_function = nn.CrossEntropyLoss(ignore_index=-1, weight= torch.tensor(WEIGHTS).to(device))
+
+    result = train_test.test(
+        model= model,
+        dataloader=dataloader,
+        device=device,
+        loss_fn=loss_function,
+        print_batch_data=print_batch_data
+    )
+
+    print(f"Evaluation | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
+
+
+def compare_models(truth_model_name, model_name, batch_size= 20, print_batch_data= True):
+    dataloader= DataLoader(
+        dataset= Kitti(KITTI_360_DATASET_DIR, projection_type="ground_truth", set='eval', std_num_points=90000, num_samples=61280),
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True
+    )
+
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is required to train this model")
+    
+    device = torch.device("cuda")
+
+    models_directory= Path("./models/saved/")
+    truth_model= load_saved_model(model_path= models_directory/truth_model_name, device= device)[0]
+    model= load_saved_model(model_path= models_directory/model_name, device= device)[0]
+
+    loss_function= nn.CrossEntropyLoss(ignore_index= -1, weight= torch.tensor(WEIGHTS).to(device))
+
+    result= train_test.compare(truth_model=truth_model, model=model, dataloader=dataloader, device= device, loss_fn=loss_function, print_batch_data=print_batch_data)
+
+    print(f"Comparison | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
