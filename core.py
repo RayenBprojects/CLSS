@@ -6,6 +6,7 @@ from torch import optim
 from models import pointnetpp
 
 from tools import train_test
+from tools.model_viewer import load_saved_model
 from data.load.kitti360 import Kitti
 
 import os
@@ -249,3 +250,33 @@ async def train_pointnetpp(input_model= None, projection_type= "ground_truth", b
     results['model']= model
     
     return results
+
+
+async def evaluate_model(model_name, projection_type= "ground_truth", batch_size= "20", print_batch_data= True):
+    dataloader= DataLoader(
+        dataset= Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='eval', std_num_points=90000, num_samples=61280),
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True
+    )
+
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA is required to train this model")
+    
+    device = torch.device("cuda")
+
+    models_directory= Path("./models/saved/")
+    model= load_saved_model(model_name= models_directory/model_name, device= device)[0]
+
+    loss_function = nn.CrossEntropyLoss(ignore_index=-1, weight= torch.tensor(WEIGHTS).to(device))
+
+    result = await train_test.test(
+        model= model,
+        dataloader=dataloader,
+        device=device,
+        loss_fn=loss_function,
+    )
+    
+    print(f"Evaluation | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
