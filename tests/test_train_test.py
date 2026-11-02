@@ -44,3 +44,9 @@ def test_train_and_test_ignore_dummy_point_labels():
 
     assert training_result["loss"] == expected_loss
     assert testing_result["loss"] == expected_loss
+    assert training_result["oAcc"] == 1.0
+    assert training_result["mAcc"] == 1.0
+    assert training_result["mIoU"] == 1.0
+    assert testing_result["oAcc"] == 1.0
+    assert testing_result["mAcc"] == 1.0
+    assert testing_result["mIoU"] == 1.0

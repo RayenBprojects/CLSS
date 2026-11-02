@@ -1,6 +1,9 @@
 .venv/
 __pycache__/
-temp*.py
+temp*
+
+models/saved/*
+!/models/saved/sample_model.pt2
 
 .env
 

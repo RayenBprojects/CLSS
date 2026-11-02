@@ -1,0 +1,194 @@
+Traceback (most recent call last):
+  File "/home/rayen/projects/CLSS/run_model_training.py", line 65, in <module>
+    main()
+    ~~~~^^
+  File "/home/rayen/projects/CLSS/run_model_training.py", line 41, in main
+    results = asyncio.run(train_pointnetpp(input_model= model, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i))
+  File "/usr/lib/python3.14/asyncio/runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.14/asyncio/runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.14/asyncio/base_events.py", line 707, in run_until_complete
+    self.run_forever()
+    ~~~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/asyncio/base_events.py", line 678, in run_forever
+    self._run_once()
+    ~~~~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/asyncio/base_events.py", line 2062, in _run_once
+    handle._run()
+    ~~~~~~~~~~~^^
+  File "/usr/lib/python3.14/asyncio/events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/rayen/projects/CLSS/core.py", line 112, in train_pointnetpp
+    result = await train_test.train(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+        )
+        ^
+  File "/home/rayen/projects/CLSS/tools/train_test.py", line 29, in train
+    print(f"\rBatch {index+1} | Loss= {loss.item()}", end= "")
+                                       ~~~~~~~~~^^
+  File "/usr/lib/python3.14/asyncio/runners.py", line 167, in _on_sigint
+    raise KeyboardInterrupt()
+KeyboardInterrupt
+Exception ignored in atexit callback <bound method finalize._exitfunc of <class 'weakref.finalize'>>:
+Traceback (most recent call last):
+  File "/usr/lib/python3.14/weakref.py", line 566, in _exitfunc
+    f()
+  File "/usr/lib/python3.14/weakref.py", line 490, in __call__
+    return info.func(*info.args, **(info.kwargs or {}))
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/library.py", line 674, in _del_library
+    m.reset()
+KeyboardInterrupt: 
+Terminated
+/usr/lib/python3.14/multiprocessing/resource_tracker.py:475: UserWarning: resource_tracker: There appear to be 20 leaked semaphore objects to clean up at shutdown: {'/mp-v5b2lidj', '/mp-zw3bfohd', '/mp-m4ujtjlf', '/mp-72r009w1', '/mp-pvtnj2ek', '/mp-rzirh9tr', '/mp-dtoamqjt', '/mp-r6adl4ba', '/mp-op16k7d0', '/mp-26vo_bv6', '/mp-733btz4y', '/mp-4i8qz9t1', '/mp-kd4hdckr', '/mp-c8oq7kw1', '/mp-mt01dhqv', '/mp-ocznl7nt', '/mp-edbdq7jc', '/mp-61jxejl_', '/mp-k5u70feu', '/mp-_iwd0s5g'}
+  warnings.warn(
+/usr/lib/python3.14/multiprocessing/resource_tracker.py:475: UserWarning: resource_tracker: There appear to be 20 leaked semaphore objects to clean up at shutdown: {'/mp-rokytiax', '/mp-s564pf7f', '/mp-dlaj2k2h', '/mp-pzz3kv8c', '/mp-jsjaq9cc', '/mp-7sjpvqhu', '/mp-k8lvik_7', '/mp-93jsmfld', '/mp-uxsu5y5n', '/mp-i8s2si3s', '/mp-k7hwibb5', '/mp-a_iu1d6l', '/mp-mc4q3a22', '/mp-avtui3w2', '/mp-qibz15m9', '/mp-f6k_bfij', '/mp-27_15r0w', '/mp-y28_ny96', '/mp-9bjhhul3', '/mp-f38jq445'}
+  warnings.warn(
+/usr/lib/python3.14/multiprocessing/resource_tracker.py:475: UserWarning: resource_tracker: There appear to be 20 leaked semaphore objects to clean up at shutdown: {'/mp-30255uh8', '/mp-jci75zkv', '/mp-c41ur_3g', '/mp-1dfjqcm5', '/mp-1l7a_sy_', '/mp-2dd7rj9y', '/mp-gsqjs3ri', '/mp-wziy4v97', '/mp-p8evtbow', '/mp-ac602uhy', '/mp-8pro6tdf', '/mp-ddej7gvi', '/mp-_ozv2rsg', '/mp-2c29pusz', '/mp-salijgip', '/mp-wskqa8nc', '/mp-mrxne68z', '/mp-3v9p9nua', '/mp-0pt0t6tc', '/mp-47sbblwa'}
+  warnings.warn(
+/usr/lib/python3.14/multiprocessing/resource_tracker.py:475: UserWarning: resource_tracker: There appear to be 20 leaked semaphore objects to clean up at shutdown: {'/mp-d4a3m3fh', '/mp-34w2o69p', '/mp-hfn3s_6h', '/mp-ctnorrzw', '/mp-ec5ass7w', '/mp-cxe5sved', '/mp-b9m5y27c', '/mp-w3_mw7s0', '/mp-yozynk6e', '/mp-kcal3dn2', '/mp-i6mrzo9a', '/mp-_eqj2wqb', '/mp-ye6bpc7_', '/mp-d1rxq0cj', '/mp-ndckbehu', '/mp-ptw803pa', '/mp-jpvctkoh', '/mp-vssp7r8h', '/mp-gc2xh6k4', '/mp-icprvd2m'}
+  warnings.warn(
+/usr/lib/python3.14/multiprocessing/resource_tracker.py:475: UserWarning: resource_tracker: There appear to be 20 leaked semaphore objects to clean up at shutdown: {'/mp-waitj6k4', '/mp-29g__waa', '/mp-dhagexgy', '/mp-6k0g10lo', '/mp-i637xlnx', '/mp-dfh9bw87', '/mp-nij96slv', '/mp-o9a7w7tp', '/mp-64l8l71h', '/mp-mght1k4i', '/mp-64ebn3de', '/mp-gx5ysv6g', '/mp-p0wuf1x3', '/mp-qbomng88', '/mp-s6mv789n', '/mp-bzlwssw8', '/mp-nt0g0htb', '/mp-hwb_w59w', '/mp-xbygl2xf', '/mp-19pgse4b'}
+  warnings.warn(
+Traceback (most recent call last):
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 1293, in _try_get_data
+    data = self._data_queue.get(timeout=timeout)
+  File "/usr/lib/python3.14/queue.py", line 209, in get
+    raise Empty
+_queue.Empty
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/rayen/projects/CLSS/run_model_training.py", line 65, in <module>
+    main()
+    ~~~~^^
+  File "/home/rayen/projects/CLSS/run_model_training.py", line 41, in main
+    results = asyncio.run(train_pointnetpp(input_model= model, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i))
+  File "/usr/lib/python3.14/asyncio/runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.14/asyncio/runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.14/asyncio/base_events.py", line 720, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/rayen/projects/CLSS/core.py", line 112, in train_pointnetpp
+    result = await train_test.train(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+        )
+        ^
+  File "/home/rayen/projects/CLSS/tools/train_test.py", line 18, in train
+    for index, (X, Y) in enumerate(dataloader):
+                         ~~~~~~~~~^^^^^^^^^^^^
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 725, in __next__
+    data = self._next_data()
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 1507, in _next_data
+    idx, data = self._get_data()
+                ~~~~~~~~~~~~~~^^
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 1456, in _get_data
+    success, data = self._try_get_data()
+                    ~~~~~~~~~~~~~~~~~~^^
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 1306, in _try_get_data
+    raise RuntimeError(
+        f"DataLoader worker (pid(s) {pids_str}) exited unexpectedly"
+    ) from e
+RuntimeError: DataLoader worker (pid(s) 1052404, 1052410, 1052413, 1052416) exited unexpectedly
+Traceback (most recent call last):
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 1293, in _try_get_data
+    data = self._data_queue.get(timeout=timeout)
+  File "/usr/lib/python3.14/queue.py", line 209, in get
+    raise Empty
+_queue.Empty
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/rayen/projects/CLSS/run_model_training.py", line 65, in <module>
+    main()
+    ~~~~^^
+  File "/home/rayen/projects/CLSS/run_model_training.py", line 41, in main
+    results = asyncio.run(train_pointnetpp(input_model= model, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i))
+  File "/usr/lib/python3.14/asyncio/runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.14/asyncio/runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.14/asyncio/base_events.py", line 720, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/rayen/projects/CLSS/core.py", line 112, in train_pointnetpp
+    result = await train_test.train(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+        )
+        ^
+  File "/home/rayen/projects/CLSS/tools/train_test.py", line 18, in train
+    for index, (X, Y) in enumerate(dataloader):
+                         ~~~~~~~~~^^^^^^^^^^^^
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 725, in __next__
+    data = self._next_data()
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 1507, in _next_data
+    idx, data = self._get_data()
+                ~~~~~~~~~~~~~~^^
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 1456, in _get_data
+    success, data = self._try_get_data()
+                    ~~~~~~~~~~~~~~~~~~^^
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 1306, in _try_get_data
+    raise RuntimeError(
+        f"DataLoader worker (pid(s) {pids_str}) exited unexpectedly"
+    ) from e
+RuntimeError: DataLoader worker (pid(s) 1052407, 1052411, 1052414, 1052417) exited unexpectedly
+Traceback (most recent call last):
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 1293, in _try_get_data
+    data = self._data_queue.get(timeout=timeout)
+  File "/usr/lib/python3.14/queue.py", line 209, in get
+    raise Empty
+_queue.Empty
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/rayen/projects/CLSS/run_model_training.py", line 65, in <module>
+    main()
+    ~~~~^^
+  File "/home/rayen/projects/CLSS/run_model_training.py", line 41, in main
+    results = asyncio.run(train_pointnetpp(input_model= model, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i))
+  File "/usr/lib/python3.14/asyncio/runners.py", line 205, in run
+    return runner.run(main)
+           ~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.14/asyncio/runners.py", line 128, in run
+    return self._loop.run_until_complete(task)
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^
+  File "/usr/lib/python3.14/asyncio/base_events.py", line 720, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/home/rayen/projects/CLSS/core.py", line 112, in train_pointnetpp
+    result = await train_test.train(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+        )
+        ^
+  File "/home/rayen/projects/CLSS/tools/train_test.py", line 18, in train
+    for index, (X, Y) in enumerate(dataloader):
+                         ~~~~~~~~~^^^^^^^^^^^^
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 725, in __next__
+    data = self._next_data()
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 1507, in _next_data
+    idx, data = self._get_data()
+                ~~~~~~~~~~~~~~^^
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 1456, in _get_data
+    success, data = self._try_get_data()
+                    ~~~~~~~~~~~~~~~~~~^^
+  File "/home/rayen/projects/CLSS/.venv/lib/python3.14/site-packages/torch/utils/data/dataloader.py", line 1306, in _try_get_data
+    raise RuntimeError(
+        f"DataLoader worker (pid(s) {pids_str}) exited unexpectedly"
+    ) from e
+RuntimeError: DataLoader worker (pid(s) 1052408, 1052412, 1052415, 1052418) exited unexpectedly
