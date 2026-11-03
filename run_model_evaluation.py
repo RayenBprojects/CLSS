@@ -12,7 +12,6 @@ def main():
     parser.add_argument("-gm", "--ground_truth_model", default= "ground_truth_model.pt2")
     parser.add_argument("-pm", "--pinhole_model", default= "pinhole_model.pt2")
     parser.add_argument("-cm", "--cylindrical_model", default= "cylindrical_model.pt2")
-    parser.add_argument("-bs", "--batch_size", default= 16)
     parser.add_argument("-p", "--print_batch_data", action= 'store_true')
     args= parser.parse_args()
 
@@ -41,23 +40,23 @@ def main():
 
     if models_status["ground_truth"]:
         print("-- Evaluating Ground Truth Model --")
-        evaluate_model(model_name= args.ground_truth_model, projection_type= "ground_truth", batch_size= int(args.batch_size), print_batch_data= args.print_batch_data)
+        evaluate_model(model_name= args.ground_truth_model, projection_type= "ground_truth", batch_size= 1, print_batch_data= args.print_batch_data)
 
     if models_status["pinhole"]:
         print("-- Evaluating Pinhole Model --")
-        evaluate_model(model_name= args.pinhole_model, projection_type= "pinhole", batch_size= int(args.batch_size), print_batch_data= args.print_batch_data)
+        evaluate_model(model_name= args.pinhole_model, projection_type= "pinhole", batch_size= 1, print_batch_data= args.print_batch_data)
 
     if models_status["cylindrical"]:
         print("-- Evaluating Cylindrical Model --")
-        evaluate_model(model_name= args.cylindrical_model, projection_type= "cylindrical", batch_size= int(args.batch_size), print_batch_data= args.print_batch_data)
+        evaluate_model(model_name= args.cylindrical_model, projection_type= "cylindrical", batch_size= 1, print_batch_data= args.print_batch_data)
     
     if models_status["ground_truth"] and models_status["pinhole"]:
         print("-- Comparing Pinhole Model Against Ground Truth Model")
-        compare_models(truth_model_name= args.ground_truth_model, model_name= args.pinhole_model, batch_size= int(args.batch_size), print_batch_data= args.print_batch_data)
+        compare_models(truth_model_name= args.ground_truth_model, model_name= args.pinhole_model, batch_size= 1, print_batch_data= args.print_batch_data)
 
     if models_status["ground_truth"] and models_status["cylindrical"]:
         print("-- Comparing Cylindrical Model Against Ground Truth Model")
-        compare_models(truth_model_name= args.ground_truth_model, model_name= args.cylindrical_model, batch_size= int(args.batch_size), print_batch_data= args.print_batch_data)
+        compare_models(truth_model_name= args.ground_truth_model, model_name= args.cylindrical_model, batch_size= 1, print_batch_data= args.print_batch_data)
 
     print("-- Done --")
     

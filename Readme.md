@@ -111,7 +111,7 @@ Available options are:
 | `--optim` | `Adam`, `SGD` / `Adam` | Optimizer |
 | `--print_batch_data` | off by default | Print per-batch metrics |
 
-Training requires CUDA. The script exports a numbered `.pt2` model into `models/saved/` after each successfully completed epoch. Model files are ignored by Git except for the checked-in sample model.
+Training requires CUDA. The script exports a numbered `.pt2` model into `models/saved/` after each successfully completed epoch. Exported graphs retain the CUDA device used during export, so models exported by earlier versions must be retrained and re-exported before CUDA evaluation. Model files are ignored by Git except for the checked-in sample model.
 
 ## Evaluate
 

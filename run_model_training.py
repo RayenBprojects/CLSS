@@ -53,9 +53,14 @@ def main():
             save_dir = Path("./models/saved")
             save_dir.mkdir(parents=True, exist_ok=True)
             model_path = next_model_path(save_dir, dataset)
-            export_model = copy.deepcopy(model).cpu().eval()
+            export_model = copy.deepcopy(model).eval()
             input_features = export_model.input_features
-            example_input = torch.rand(1, 64, input_features)
+            example_input = torch.rand(
+                1,
+                64,
+                input_features,
+                device=next(export_model.parameters()).device,
+            )
             exported_model = torch.export.export(
                 export_model,
                 (example_input,),
