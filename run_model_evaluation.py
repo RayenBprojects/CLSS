@@ -9,9 +9,9 @@ from core import evaluate_model, compare_models
 
 def main():
     parser= argparse.ArgumentParser()
-    parser.add_argument("-gm", "--ground_truth_model", default= "sample_model_1.pt2")
-    parser.add_argument("-pm", "--pinhole_model", default= "sample_model_2.pt2")
-    parser.add_argument("-cm", "--cylindrical_model", default= "sample_model_3.pt2")
+    parser.add_argument("-gm", "--ground_truth_model", default= "ground_truth_model.pt2")
+    parser.add_argument("-pm", "--pinhole_model", default= "pinhole_model.pt2")
+    parser.add_argument("-cm", "--cylindrical_model", default= "cylindrical_model.pt2")
     parser.add_argument("-bs", "--batch_size", default= 16)
     parser.add_argument("-p", "--print_batch_data", action= 'store_true')
     args= parser.parse_args()
