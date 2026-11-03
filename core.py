@@ -286,7 +286,8 @@ def evaluate_model(model_name, projection_type= "ground_truth", batch_size= 16, 
         dataloader=dataloader,
         device=device,
         loss_fn=loss_function,
-        print_batch_data=print_batch_data
+        print_batch_data=print_batch_data,
+        model_eval= False
     )
 
     print(f"Evaluation | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")

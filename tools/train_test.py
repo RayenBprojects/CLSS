@@ -50,8 +50,9 @@ def train(model, dataloader, device, loss_fn, optimizer, print_batch_data= True)
     return {'loss': returned_loss / num_batches, 'oAcc' : oAcc.get_oAcc(), 'mAcc' : mAcc.get_mAcc(), 'mIoU' : mIoU.get_mIoU(), 'time': execution_time}
 
 
-def test(model, dataloader, device, loss_fn, print_batch_data= True) -> dict[str: float]:
-    model.eval()
+def test(model, dataloader, device, loss_fn, print_batch_data= True, model_eval= True) -> dict[str: float]:
+    if model_eval:
+        model.eval()
 
     num_batches = len(dataloader)
     if num_batches == 0:
@@ -91,8 +92,8 @@ def test(model, dataloader, device, loss_fn, print_batch_data= True) -> dict[str
 
 
 def compare(truth_model, model, dataloader, device, loss_fn, print_batch_data= True) -> dict[str: float]:
-    truth_model.eval()
-    model.eval()
+    #truth_model.eval()
+    #model.eval()
 
     num_batches = len(dataloader)
     if num_batches == 0:
