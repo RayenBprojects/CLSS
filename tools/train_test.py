@@ -28,7 +28,7 @@ def train(model, dataloader, device, loss_fn, optimizer, print_batch_data= True)
 
         labels= torch.arange(Y_pred.shape[-1]).to(device)
         Y_pred_choice= torch.argmax(Y_pred, dim= -1)
-        oAcc.calculcate_oAcc(Y_pred_choice, Y, valid_points)
+        oAcc.calculate_oAcc(Y_pred_choice, Y, valid_points)
         mAcc.calculate_mAcc(Y_pred_choice, Y, labels, valid_points)
         mIoU.calculate_mIoU(Y_pred_choice, Y, labels, valid_points)
 
@@ -36,7 +36,7 @@ def train(model, dataloader, device, loss_fn, optimizer, print_batch_data= True)
         returned_loss += loss.item()
         loss.backward()
         if print_batch_data:
-            print(f"\rBatch {index+1} | loss= {loss.item()} | overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
+            print(f"\rBatch {index+1}/{num_batches}: loss= {loss.item()} | overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
         optimizer.step()
         optimizer.zero_grad()
 
@@ -74,14 +74,14 @@ def test(model, dataloader, device, loss_fn, print_batch_data= True) -> dict[str
 
             labels= torch.arange(Y_pred.shape[-1]).to(device)
             Y_pred_choice= torch.argmax(Y_pred, dim= -1)
-            oAcc.calculcate_oAcc(Y_pred_choice, Y, valid_points)
+            oAcc.calculate_oAcc(Y_pred_choice, Y, valid_points)
             mAcc.calculate_mAcc(Y_pred_choice, Y, labels, valid_points)
             mIoU.calculate_mIoU(Y_pred_choice, Y, labels, valid_points)
 
             loss += loss_fn(Y_pred[valid_points], Y[valid_points]).item()
 
             if print_batch_data:
-                print(f"\rBatch {index+1} | loss= {loss} | overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
+                print(f"\rBatch {index+1}/{num_batches}: loss= {loss} | overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
     if print_batch_data:
         print("\r")
     else:
@@ -123,7 +123,7 @@ def compare(truth_model, model, dataloader, device, loss_fn, print_batch_data= T
             loss += loss_fn(Y[valid_points], torch.argmax(truth_Y, dim= -1)).item()
 
             if print_batch_data:
-                print(f"\rBatch {index+1} | loss= {loss} | overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
+                print(f"\rBatch {index+1}/{num_batches}: loss= {loss} | overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
     if print_batch_data:
         print("\r")
     else:
