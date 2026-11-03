@@ -1,4 +1,5 @@
 import argparse
+import copy
 from pathlib import Path
 
 import os
@@ -36,25 +37,27 @@ def main():
     args = parser.parse_args()
 
     model= None
+    optimizer = None
     print(f"Optim: {args.optim} | Learning Rate: {args.learning_rate}")
     print("-- Training --")
     for i in range(int(args.num_epochs)):
         
-        results = train_pointnetpp(input_model= model, projection_type= args.projection_type, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i, print_batch_data= args.print_batch_data)
+        results = train_pointnetpp(input_model= model, projection_type= args.projection_type, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i, print_batch_data= args.print_batch_data, input_optimizer= optimizer)
 
         if results["status"]:
             dataset = "kitti360"
             model = results["model"]
+            optimizer = results["optimizer"]
             model.eval()
 
             save_dir = Path("./models/saved")
             save_dir.mkdir(parents=True, exist_ok=True)
             model_path = next_model_path(save_dir, dataset)
-            model = model.cpu().eval()
-            input_features = model.input_features
+            export_model = copy.deepcopy(model).cpu().eval()
+            input_features = export_model.input_features
             example_input = torch.rand(1, 64, input_features)
             exported_model = torch.export.export(
-                model,
+                export_model,
                 (example_input,),
                 dynamic_shapes={
                     "X": {1: torch.export.Dim("num_points", min=64)},

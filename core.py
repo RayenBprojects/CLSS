@@ -7,7 +7,7 @@ from models import pointnetpp
 
 from tools import train_test
 from tools.model_viewer import load_saved_model
-from tools.accuracy import OAcc, MAcc, MIoU
+from tools.accuracy import IGNORE_INDEX, OAcc, MAcc, MIoU
 from data.load.kitti360 import Kitti
 
 import os
@@ -185,7 +185,7 @@ def collect_kitti_data(clean_existing_files : bool = False):
         (KITTI_360_DATASET_DIR/f'all_pinhole_projections/{item}').unlink(missing_ok= True)
 
 
-def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_size= 16, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0, print_batch_data= True):
+def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_size= 16, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0, print_batch_data= True, input_optimizer= None):
     results = {}
     epochs = num_epochs
 
@@ -222,9 +222,15 @@ def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_s
     device = torch.device("cuda")
     model.to(device)
 
-    loss_function = nn.CrossEntropyLoss(ignore_index=-1, weight= torch.tensor(WEIGHTS).to(device))
+    loss_function = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX, weight= torch.tensor(WEIGHTS).to(device))
 
-    optimizer= optim.Adam(model.parameters(), lr= learning_rate) if optimizer_choice == "Adam" else optim.SGD(model.parameters(), lr= learning_rate)
+    optimizer = input_optimizer
+    if optimizer is None:
+        optimizer = (
+            optim.Adam(model.parameters(), lr=learning_rate)
+            if optimizer_choice == "Adam"
+            else optim.SGD(model.parameters(), lr=learning_rate)
+        )
 
     for i in range(epochs):
         print(f"-Epoch {i+1+start_epoch}-")
@@ -250,6 +256,7 @@ def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_s
     results['status'] = True
     results['loss']= result['loss']
     results['model']= model
+    results['optimizer'] = optimizer
     
     return results
 
@@ -272,7 +279,7 @@ def evaluate_model(model_name, projection_type= "ground_truth", batch_size= 16, 
     models_directory= Path("./models/saved/")
     model= load_saved_model(model_path= models_directory/model_name, device= device)[0]
 
-    loss_function = nn.CrossEntropyLoss(ignore_index=-1, weight= torch.tensor(WEIGHTS).to(device))
+    loss_function = nn.CrossEntropyLoss(ignore_index=IGNORE_INDEX, weight= torch.tensor(WEIGHTS).to(device))
 
     result = train_test.test(
         model= model,
@@ -304,7 +311,7 @@ def compare_models(truth_model_name, model_name, batch_size= 16, print_batch_dat
     truth_model= load_saved_model(model_path= models_directory/truth_model_name, device= device)[0]
     model= load_saved_model(model_path= models_directory/model_name, device= device)[0]
 
-    loss_function= nn.CrossEntropyLoss(ignore_index= -1, weight= torch.tensor(WEIGHTS).to(device))
+    loss_function= nn.CrossEntropyLoss(ignore_index= IGNORE_INDEX, weight= torch.tensor(WEIGHTS).to(device))
 
     result= train_test.compare(truth_model=truth_model, model=model, dataloader=dataloader, device= device, loss_fn=loss_function, print_batch_data=print_batch_data)
 

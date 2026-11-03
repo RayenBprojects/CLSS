@@ -22,10 +22,27 @@ def test_metrics_accumulate_counts_and_ignore_invalid_points():
     mean_accuracy = MAcc()
     mean_iou = MIoU()
     for predicted, ground_truth, valid_mask in batches:
-        overall_accuracy.calculcate_oAcc(predicted, ground_truth, valid_mask)
+        overall_accuracy.calculate_oAcc(predicted, ground_truth, valid_mask)
         mean_accuracy.calculate_mAcc(predicted, ground_truth, labels, valid_mask)
         mean_iou.calculate_mIoU(predicted, ground_truth, labels, valid_mask)
 
-    assert overall_accuracy.get_oAcc() == 2 / 3
+    assert abs(overall_accuracy.get_oAcc() - 2 / 3) < 1e-6
     assert abs(mean_accuracy.get_mAcc() - 13 / 18) < 1e-6
     assert mean_iou.get_mIoU() == 0.5
+
+
+def test_metrics_ignore_unlabeled_targets():
+    labels = torch.tensor([0, 1, 2])
+    predicted = torch.tensor([[0, 2, 1]])
+    ground_truth = torch.tensor([[0, -1, 1]])
+
+    overall_accuracy = OAcc()
+    mean_accuracy = MAcc()
+    mean_iou = MIoU()
+    overall_accuracy.calculate_oAcc(predicted, ground_truth)
+    mean_accuracy.calculate_mAcc(predicted, ground_truth, labels)
+    mean_iou.calculate_mIoU(predicted, ground_truth, labels)
+
+    assert overall_accuracy.get_oAcc() == 1.0
+    assert mean_accuracy.get_mAcc() == 1.0
+    assert mean_iou.get_mIoU() == 1.0

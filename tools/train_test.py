@@ -116,11 +116,11 @@ def compare(truth_model, model, dataloader, device, loss_fn, print_batch_data= T
             labels= torch.arange(truth_Y.shape[-1]).to(device)
             truth_Y_choice= torch.argmax(truth_Y, dim= -1)
             Y_choice= torch.argmax(Y, dim= -1)
-            oAcc.calculcate_oAcc(Y_choice, truth_Y_choice, valid_points)
+            oAcc.calculate_oAcc(Y_choice, truth_Y_choice, valid_points)
             mAcc.calculate_mAcc(Y_choice, truth_Y_choice, labels, valid_points)
             mIoU.calculate_mIoU(Y_choice, truth_Y_choice, labels, valid_points)
 
-            loss += loss_fn(Y[valid_points], torch.argmax(truth_Y, dim= -1)).item()
+            loss += loss_fn(Y[valid_points], truth_Y_choice[valid_points]).item()
 
             if print_batch_data:
                 print(f"\rBatch {index+1}/{num_batches}: loss= {loss} | overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
