@@ -288,7 +288,7 @@ def evaluate_model(model_name, projection_type= "ground_truth", batch_size= 16, 
         model_eval= False
     )
 
-    print(f"Evaluation | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
+    print(f"Evaluation | overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
 
 
 def compare_models(truth_model_name, model_name, batch_size= 16, print_batch_data= True):
@@ -314,7 +314,7 @@ def compare_models(truth_model_name, model_name, batch_size= 16, print_batch_dat
 
     result= train_test.compare(truth_model=truth_model, model=model, dataloader=dataloader, device= device, loss_fn=loss_function, print_batch_data=print_batch_data)
 
-    print(f"Comparison | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
+    print(f"Comparison | overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
 
 
 def evaluate_data(projection_type, batch_size= 16, print_batch_data= True):

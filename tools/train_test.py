@@ -82,7 +82,7 @@ def test(model, dataloader, device, loss_fn, print_batch_data= True, model_eval=
             loss += loss_fn(Y_pred[valid_points], Y[valid_points]).item()
 
             if print_batch_data:
-                print(f"\rBatch {index+1}/{num_batches}: loss= {loss} | overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
+                print(f"\rBatch {index+1}/{num_batches}: overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
     if print_batch_data:
         print("\r")
     else:
@@ -124,7 +124,7 @@ def compare(truth_model, model, dataloader, device, loss_fn, print_batch_data= T
             loss += loss_fn(Y[valid_points], truth_Y_choice[valid_points]).item()
 
             if print_batch_data:
-                print(f"\rBatch {index+1}/{num_batches}: loss= {loss} | overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
+                print(f"\rBatch {index+1}/{num_batches}: overall accuracy= {oAcc.get_oAcc()} | mean class accuracy= {mAcc.get_mAcc()} | mean intersection over union= {mIoU.get_mIoU()}", end= "")
     if print_batch_data:
         print("\r")
     else:
