@@ -50,7 +50,7 @@ def train(model, dataloader, device, loss_fn, optimizer, print_batch_data= True)
     return {'loss': returned_loss / num_batches, 'oAcc' : oAcc.get_oAcc(), 'mAcc' : mAcc.get_mAcc(), 'mIoU' : mIoU.get_mIoU(), 'time': execution_time}
 
 
-def test(model, dataloader, device, loss_fn, print_batch_data= True, model_eval= True) -> dict[str: float]:
+def test(model, dataloader, device, loss_fn, truth_dataloader= None, print_batch_data= True, model_eval= True) -> dict[str: float]:
     if model_eval:
         model.eval()
 
@@ -65,9 +65,13 @@ def test(model, dataloader, device, loss_fn, print_batch_data= True, model_eval=
     mIoU= MIoU()
 
     with torch.no_grad():
-        for index, (X, Y) in enumerate(dataloader):
+        if not truth_dataloader:
+            truth_dataloader= dataloader
+
+        for index, ((truth_X, truth_Y), (X, Y)) in enumerate(zip(truth_dataloader, dataloader)):
+            Y= truth_Y
             X, Y= X.to(device), Y.to(device)
-            valid_points = (X != 0.0).any(dim=-1)
+            valid_points = (X != 0.0).any(dim=-1) & (truth_X != 0.0).any(dim=-1)
             if not valid_points.any():
                 raise ValueError("A batch contains no valid points")
 
@@ -91,7 +95,7 @@ def test(model, dataloader, device, loss_fn, print_batch_data= True, model_eval=
     return {'loss' : float(loss)/num_batches, 'oAcc' : oAcc.get_oAcc(), 'mAcc' : mAcc.get_mAcc(), 'mIoU' : mIoU.get_mIoU()}
 
 
-def compare(truth_model, model, dataloader, device, loss_fn, print_batch_data= True) -> dict[str: float]:
+def compare(truth_model, model, truth_dataloader, dataloader, device, loss_fn, print_batch_data= True) -> dict[str: float]:
     #truth_model.eval()
     #model.eval()
 
@@ -106,9 +110,9 @@ def compare(truth_model, model, dataloader, device, loss_fn, print_batch_data= T
     loss= 0.0
 
     with torch.no_grad():
-        for index, (X, Y) in enumerate(dataloader):
+        for index, ((truth_X, truth_Y), (X, Y)) in enumerate(zip(truth_dataloader, dataloader)):
             X= X.to(device)
-            valid_points = (X != 0.0).any(dim=-1)
+            valid_points = (X != 0.0).any(dim=-1) & (truth_X != 0.0).any(dim=-1)
             if not valid_points.any():
                 raise ValueError("A batch contains no valid points")
             
