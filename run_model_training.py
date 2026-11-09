@@ -38,16 +38,18 @@ def main():
 
     model= None
     optimizer = None
+    scheduler= None
     print(f"Optim: {args.optim} | Learning Rate: {args.learning_rate}")
     print("-- Training --")
     for i in range(int(args.num_epochs)):
         
-        results = train_pointnetpp(input_model= model, projection_type= args.projection_type, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i, print_batch_data= args.print_batch_data, input_optimizer= optimizer)
+        results = train_pointnetpp(input_model= model, projection_type= args.projection_type, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i, print_batch_data= args.print_batch_data, input_optimizer= optimizer, input_scheduler= scheduler)
 
         if results["status"]:
             dataset = "kitti360"
             model = results["model"]
             optimizer = results["optimizer"]
+            scheduler = results["scheduler"]
             model.eval()
 
             save_dir = Path("./models/saved")

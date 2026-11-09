@@ -183,7 +183,7 @@ def collect_kitti_data(clean_existing_files : bool = False):
         (KITTI_360_DATASET_DIR/f'all_pinhole_projections/{item}').unlink(missing_ok= True)
 
 
-def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_size= 32, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0, print_batch_data= True, input_optimizer= None):
+def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_size= 32, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0, print_batch_data= True, input_optimizer= None, input_scheduler= None):
     results = {}
     epochs = num_epochs
 
@@ -230,6 +230,10 @@ def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_s
             else optim.SGD(model.parameters(), lr=learning_rate)
         )
 
+    scheduler= input_scheduler
+    if scheduler is None:
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.7)
+
     for i in range(epochs):
         print(f"-Epoch {i+1+start_epoch}-")
         result = train_test.train(
@@ -241,6 +245,8 @@ def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_s
                 print_batch_data= print_batch_data
             )
         print(f"Training | loss= {result['loss']} | overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']} | time= {result['time']} hours")
+
+        scheduler.step()
 
         result = train_test.test(
             model= model,
@@ -255,6 +261,7 @@ def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_s
     results['loss']= result['loss']
     results['model']= model
     results['optimizer'] = optimizer
+    results['scheduler'] = scheduler
     
     return results
 
