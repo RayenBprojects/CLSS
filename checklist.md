@@ -9,3 +9,5 @@
 5. Change accuracy calculations to ignore unlabeled points when comparing models | DONE
 
 6. Expand accuracy calculations to compare model outputs against ground truth (not just model) | DONE
+
+7. Change to faithful Pointnet++ implementation (?)
