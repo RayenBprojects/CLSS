@@ -70,7 +70,7 @@ def test(model, dataloader, device, loss_fn, truth_dataloader= None, print_batch
 
         for index, ((truth_X, truth_Y), (X, Y)) in enumerate(zip(truth_dataloader, dataloader)):
             Y= truth_Y
-            X, Y= X.to(device), Y.to(device)
+            truth_X, truth_Y, X, Y= truth_X.to(device), truth_Y.to(device), X.to(device), Y.to(device)
             valid_points = (X != 0.0).any(dim=-1) & (truth_X != 0.0).any(dim=-1)
             if not valid_points.any():
                 raise ValueError("A batch contains no valid points")
@@ -111,7 +111,7 @@ def compare(truth_model, model, truth_dataloader, dataloader, device, loss_fn, p
 
     with torch.no_grad():
         for index, ((truth_X, truth_Y), (X, Y)) in enumerate(zip(truth_dataloader, dataloader)):
-            X= X.to(device)
+            truth_X, truth_Y, X, Y= truth_X.to(device), truth_Y.to(device), X.to(device), Y.to(device)
             valid_points = (X != 0.0).any(dim=-1) & (truth_X != 0.0).any(dim=-1)
             if not valid_points.any():
                 raise ValueError("A batch contains no valid points")
