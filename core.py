@@ -229,7 +229,7 @@ def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_s
             loss_fn=loss_function,
             print_batch_data=print_batch_data
         )
-        print(f"Testing | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
+        print(f"Testing | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}\n")
 
     results['status'] = True
     results['loss']= result['loss']
