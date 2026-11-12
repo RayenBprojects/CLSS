@@ -75,6 +75,29 @@ def test_train_and_test_ignore_unlabeled_valid_points():
     assert testing_result["mIoU"] == 1.0
 
 
+def test_test_rejects_mismatched_truth_batch_sizes():
+    points = torch.ones((16, 1, 1))
+    labels = torch.zeros((16, 1), dtype=torch.long)
+    truth_points = torch.ones((32, 1, 1))
+    truth_labels = torch.zeros((32, 1), dtype=torch.long)
+
+    try:
+        test(
+            model=FixedLogits(),
+            dataloader=[(points, labels)],
+            truth_dataloader=[(truth_points, truth_labels)],
+            device=torch.device("cpu"),
+            loss_fn=nn.CrossEntropyLoss(),
+            print_batch_data=False,
+        )
+    except ValueError as error:
+        assert "Mismatched batch sizes" in str(error)
+        assert "input_X=16" in str(error)
+        assert "truth_X=32" in str(error)
+    else:
+        raise AssertionError("Mismatched batch sizes should raise ValueError")
+
+
 def test_compare_reports_metrics():
     points = torch.tensor([[[1.0]]])
     labels = torch.tensor([[0]])
