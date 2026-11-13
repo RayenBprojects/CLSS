@@ -94,6 +94,11 @@ This option deletes existing generated projection files; it does not delete the 
 
 ## Train a model
 
+Training, evaluation, and the model-output viewer use the shared seed `42` from
+`tools/reproducibility.py` for Python, NumPy, and PyTorch random operations.
+Change `SEED` there to use a different seed. Some GPU operations may still
+produce different results across hardware or software versions.
+
 Train PointNet++ with the default ground-truth projection, batch size 16, learning rate 0.001, and five epochs:
 
 ```bash

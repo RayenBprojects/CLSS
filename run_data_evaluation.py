@@ -4,12 +4,15 @@ from pathlib import Path
 import argparse
 
 from core import evaluate_data
+from tools.reproducibility import set_seed
 
 def main():
     parser= argparse.ArgumentParser()
     parser.add_argument("-bs", "--batch_size", default= 16)
     parser.add_argument("-p", "--print_batch_data", action= "store_true")
     args= parser.parse_args()
+
+    set_seed()
 
     print("-- Evaluating Data --")
     evaluate_data(projection_type= 'pinhole', batch_size= int(args.batch_size), print_batch_data= args.print_batch_data)

@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from torch.utils.data import DataLoader
 
 from data.load.kitti360 import Kitti
+from tools.reproducibility import set_seed
 
 from tools.model_viewer import (
     get_sample,
@@ -16,6 +17,7 @@ from tools.model_viewer import (
 
 
 def main() -> None:
+    set_seed()
     load_dotenv()
     parser = argparse.ArgumentParser(description="View a KITTI-360 sample prediction")
     parser.add_argument("--sample-index", type=int, default=0)

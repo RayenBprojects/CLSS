@@ -244,7 +244,7 @@ def evaluate_model(model_name, projection_type= "ground_truth", own_data= True, 
     truth_dataloader= DataLoader(
             dataset= Kitti(KITTI_360_DATASET_DIR, projection_type="ground_truth", set='eval', std_num_points=124792, num_samples=61280),
             batch_size=batch_size,
-            shuffle=True,
+            shuffle=False,
             num_workers=4,
             pin_memory=True,
             persistent_workers=True
@@ -253,7 +253,7 @@ def evaluate_model(model_name, projection_type= "ground_truth", own_data= True, 
     dataloader= DataLoader(
         dataset= Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='eval', std_num_points=124792, num_samples=61280),
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=4,
         pin_memory=True,
         persistent_workers=True
@@ -286,7 +286,7 @@ def compare_models(truth_model_name, model_name, projection_type, batch_size= 16
     truth_dataloader= DataLoader(
         dataset= Kitti(KITTI_360_DATASET_DIR, projection_type="ground_truth", set='eval', std_num_points=124792, num_samples=61280),
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=4,
         pin_memory=True,
         persistent_workers=True
@@ -295,7 +295,7 @@ def compare_models(truth_model_name, model_name, projection_type, batch_size= 16
     dataloader= DataLoader(
         dataset= Kitti(KITTI_360_DATASET_DIR, projection_type= projection_type, set='eval', std_num_points=124792, num_samples=61280),
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=4,
         pin_memory=True,
         persistent_workers=True

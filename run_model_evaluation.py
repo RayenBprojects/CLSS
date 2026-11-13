@@ -5,6 +5,7 @@ from pathlib import Path
 import os
 
 from core import evaluate_model, compare_models
+from tools.reproducibility import set_seed
 
 
 def main():
@@ -14,6 +15,8 @@ def main():
     parser.add_argument("-cm", "--cylindrical_model", default= "cylindrical_model.pt2")
     parser.add_argument("-p", "--print_batch_data", action= 'store_true')
     args= parser.parse_args()
+
+    set_seed()
 
     models_directory= Path("./models/saved")
     saved_models= next(os.walk(models_directory))[2]

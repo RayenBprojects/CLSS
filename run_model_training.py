@@ -8,6 +8,7 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 import torch
 
 from core import train_pointnetpp
+from tools.reproducibility import set_seed
 
 
 def next_model_path(save_dir: Path, dataset: str, prefix: str | None= None) -> Path:
@@ -35,6 +36,8 @@ def main():
     parser.add_argument("-o", "--optim", choices= ("Adam", "SGD"), default= "Adam")
     parser.add_argument("-p", "--print_batch_data", action= 'store_true')
     args = parser.parse_args()
+
+    set_seed()
 
     model= None
     optimizer = None
