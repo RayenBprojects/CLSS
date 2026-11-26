@@ -4,6 +4,12 @@ CLSS is a KITTI-360 point-cloud semantic-segmentation project. It generates
 ground-truth, pinhole, and cylindrical projections of LiDAR data, trains
 PointNet/PointNet++ models, and evaluates projections and saved models.
 
+> **Terminology notice:** Throughout this repository, "ground truth" refers to
+> the reference data used for evaluation, not an independently verified or
+> guaranteed ground-truth dataset. It is used as the reference against
+> which pinhole projections, cylindrical projections, and model outputs are
+> evaluated.
+
 ## Repository layout
 
 | Path | Purpose |
