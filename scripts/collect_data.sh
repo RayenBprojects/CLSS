@@ -1,0 +1,1 @@
+python run_data_collection.py > temp_data_collection.log &

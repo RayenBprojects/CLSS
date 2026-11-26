@@ -1,3 +1,2 @@
 python3.14 -m venv ./.venv &&\
-source ./.venv/bin/activate &&\
-deactivate
+source ./.venv/bin/activate

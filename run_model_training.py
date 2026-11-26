@@ -30,9 +30,9 @@ def next_model_path(save_dir: Path, dataset: str, prefix: str | None= None) -> P
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-pt", "--projection_type", choices= ("ground_truth", "pinhole", "cylindrical"), default= "ground_truth")
-    parser.add_argument("-bs", "--batch_size", default= 16)
+    parser.add_argument("-bs", "--batch_size", default= 32)
     parser.add_argument("-lr", "--learning_rate", default= 1e-3)
-    parser.add_argument("-ne", "--num_epochs", default= 5)
+    parser.add_argument("-ne", "--num_epochs", default= 120)
     parser.add_argument("-o", "--optim", choices= ("Adam", "SGD"), default= "Adam")
     parser.add_argument("-p", "--print_batch_data", action= 'store_true')
     args = parser.parse_args()
