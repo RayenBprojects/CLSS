@@ -4,8 +4,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-_semantic_ID_dict = {
-    -1 : "unlabeled",
+_OFFICIAL_LABELS = {
     0 : "unlabeled",
     1 : "ego vehicle",
     2 : "rectification border",
@@ -52,6 +51,30 @@ _semantic_ID_dict = {
     43 : "unknown vehicle",
     44 : "unknown object",
     45 : "license plate"
+}
+
+_UNWANTED_LABELS= [0, 1, 2, 3, 4, 5, 6, 9, 10, 14, 15, 16, 18, 29, 30, 34, 35, 36, 37, 38, 39, 40 , 41, 42, 43, 44, 45]
+
+_EVALUATION_LABELS= {
+    0 : "road",
+    1 : "sidewalk",
+    2 : "building",
+    3 : "wall",
+    4 : "fence",
+    5 : "pole",
+    6 : "traffic light",
+    7 : "traffic sign",
+    8 : "vegetation",
+    9 : "terrain",
+    10 : "sky",
+    11 : "person",
+    12 : "rider",
+    13 : "car",
+    14 : "truck",
+    15 : "bus",
+    16 : "train",
+    17 : "motorcycle",
+    18 : "bicycle",
 }
 
 class Kitti(Dataset):

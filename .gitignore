@@ -3,7 +3,9 @@ __pycache__/
 temp*
 
 models/saved/*
-!/models/saved/sample_model.pt2
+!/models/saved/ground_truth_model.pt2
+!/models/saved/pinhole_model.pt2
+!/models/saved/cylindrical_model.pt2
 
 .env
 

@@ -1,0 +1,1 @@
+python run_model_evaluation.py > temp_model_evaluation.log &

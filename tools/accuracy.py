@@ -1,5 +1,7 @@
 import torch
 
+IGNORE_INDEX = -1
+
 
 def _valid_points(
     predicted_Y: torch.Tensor,
@@ -9,10 +11,12 @@ def _valid_points(
     if predicted_Y.shape != ground_truth_Y.shape:
         raise ValueError("Predictions and ground truth must have the same shape")
     if valid_mask is None:
-        return torch.ones_like(ground_truth_Y, dtype=torch.bool)
-    if valid_mask.shape != ground_truth_Y.shape:
-        raise ValueError("The validity mask must match the label shape")
-    return valid_mask.to(device=ground_truth_Y.device, dtype=torch.bool)
+        mask = torch.ones_like(ground_truth_Y, dtype=torch.bool)
+    else:
+        if valid_mask.shape != ground_truth_Y.shape:
+            raise ValueError("The validity mask must match the label shape")
+        mask = valid_mask.to(device=ground_truth_Y.device, dtype=torch.bool)
+    return mask & (ground_truth_Y != IGNORE_INDEX)
 
 
 def _class_counts(

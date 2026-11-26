@@ -1,8 +1,8 @@
 # External libraries used by the project
 numpy
 python-dotenv
-torch
-torchvision
+#torch
+#torchvision
 open3d
 matplotlib
 plyfile
