@@ -23,52 +23,26 @@ KITTI_360_DATASET_DIR = os.getenv("KITTI_360_DATASET_DIR")
 
 
 WEIGHTS= [
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.0,
-    0.05221595987677574,
-    0.011922509409487247,
-    0.01984885148704052,
-    0.04311102256178856,
-    0.10289788246154785, 
-    0.01997833512723446,
-    0.029735952615737915,
-    0.05403082072734833,
-    0.22620978951454163,
-    19.83838653564453,
-    0.47962889075279236,
-    0.12947070598602295,
-    0.0,
-    1.3829102516174316,
-    0.2366407960653305,
-    0.011749894358217716,
-    0.02608262188732624,
-    0.0,
-    0.3869814872741699,
-    6.731526851654053,
-    0.028303397819399834,
-    0.11199334263801575,
-    0.4727991819381714,
-    0.21659353375434875,
-    0.14679089188575745, 
-    0.461409330368042,
-    0.3620007634162903,
-    0.5485106706619263,
-    0.05008525773882866,
-    0.10330820828676224,
-    0.36752960085868835,
-    0.40881094336509705,
-    1.7523337602615356,
-    0.15718115866184235,
-    1.072868824005127,
-    0.15160588920116425,
-    0.27930235862731934, 
-    0.348660409450531,
-    0.17658232152462006,
-    0.0]
+    0.019375182688236237, 
+    0.03226417675614357, 
+    0.0325198695063591, 
+    0.04837179183959961, 
+    0.0878184363245964, 
+    0.21050558984279633, 
+    2.262850761413574, 
+    0.3857010304927826, 
+    0.019117509946227074, 
+    0.04239395260810852, 
+    0.0, 
+    0.6294781565666199, 
+    10.990584373474121, 
+    0.04600956663489342, 
+    0.18214745819568634, 
+    0.7701876163482666, 
+    0.7574699521064758, 
+    0.590023398399353, 
+    0.8931823372840881
+]
 
 def collect_kitti_data(clean_existing_files : bool = False):
     dotenv.load_dotenv()
@@ -183,12 +157,12 @@ def collect_kitti_data(clean_existing_files : bool = False):
         (KITTI_360_DATASET_DIR/f'all_pinhole_projections/{item}').unlink(missing_ok= True)
 
 
-def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_size= 16, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0, print_batch_data= True, input_optimizer= None):
+def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_size= 32, learning_rate= 1e-3, optimizer_choice= "Adam", num_epochs= 1, start_epoch= 0, print_batch_data= True, input_optimizer= None, input_scheduler= None):
     results = {}
     epochs = num_epochs
 
     dataloader = DataLoader(
-        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='train', std_num_points=90000, num_samples=61280), #124792 | 61280
+        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='train', std_num_points=124792, num_samples=61280), #124792 | 61280
         batch_size=batch_size,
         shuffle=True,
         num_workers=4,
@@ -197,7 +171,7 @@ def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_s
     )
 
     testing_dataloader = DataLoader(
-        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='test', std_num_points=90000, num_samples=61280), #124792 | 61280
+        dataset=Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='test', std_num_points=124792, num_samples=61280), #124792 | 61280
         batch_size=batch_size,
         shuffle=True,
         num_workers=4,
@@ -205,7 +179,7 @@ def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_s
         persistent_workers=True
     )
     num_features = 1
-    num_classes = 46
+    num_classes = len(WEIGHTS)
 
     model= input_model
     if model== None:
@@ -230,6 +204,10 @@ def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_s
             else optim.SGD(model.parameters(), lr=learning_rate)
         )
 
+    scheduler= input_scheduler
+    if scheduler is None:
+        scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.7)
+
     for i in range(epochs):
         print(f"-Epoch {i+1+start_epoch}-")
         result = train_test.train(
@@ -242,6 +220,8 @@ def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_s
             )
         print(f"Training | loss= {result['loss']} | overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']} | time= {result['time']} hours")
 
+        scheduler.step()
+
         result = train_test.test(
             model= model,
             dataloader=testing_dataloader,
@@ -249,21 +229,31 @@ def train_pointnetpp(input_model= None, projection_type= "ground_truth", batch_s
             loss_fn=loss_function,
             print_batch_data=print_batch_data
         )
-        print(f"Testing | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
+        print(f"Testing | loss= {result['loss']}| overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}\n")
 
     results['status'] = True
     results['loss']= result['loss']
     results['model']= model
     results['optimizer'] = optimizer
+    results['scheduler'] = scheduler
     
     return results
 
 
-def evaluate_model(model_name, projection_type= "ground_truth", batch_size= 16, print_batch_data= True):
+def evaluate_model(model_name, projection_type= "ground_truth", own_data= True, batch_size= 16, print_batch_data= True):
+    truth_dataloader= DataLoader(
+            dataset= Kitti(KITTI_360_DATASET_DIR, projection_type="ground_truth", set='eval', std_num_points=124792, num_samples=61280),
+            batch_size=batch_size,
+            shuffle=False,
+            num_workers=4,
+            pin_memory=True,
+            persistent_workers=True
+        ) if not own_data else None
+    
     dataloader= DataLoader(
-        dataset= Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='eval', std_num_points=90000, num_samples=61280),
+        dataset= Kitti(KITTI_360_DATASET_DIR, projection_type=projection_type, set='eval', std_num_points=124792, num_samples=61280),
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,
         num_workers=4,
         pin_memory=True,
         persistent_workers=True
@@ -284,6 +274,7 @@ def evaluate_model(model_name, projection_type= "ground_truth", batch_size= 16, 
         dataloader=dataloader,
         device=device,
         loss_fn=loss_function,
+        truth_dataloader= truth_dataloader,
         print_batch_data=print_batch_data,
         model_eval= False
     )
@@ -291,11 +282,20 @@ def evaluate_model(model_name, projection_type= "ground_truth", batch_size= 16, 
     print(f"Evaluation | overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
 
 
-def compare_models(truth_model_name, model_name, batch_size= 16, print_batch_data= True):
-    dataloader= DataLoader(
-        dataset= Kitti(KITTI_360_DATASET_DIR, projection_type="ground_truth", set='eval', std_num_points=90000, num_samples=61280),
+def compare_models(truth_model_name, model_name, projection_type, batch_size= 16, print_batch_data= True):
+    truth_dataloader= DataLoader(
+        dataset= Kitti(KITTI_360_DATASET_DIR, projection_type="ground_truth", set='eval', std_num_points=124792, num_samples=61280),
         batch_size=batch_size,
-        shuffle=True,
+        shuffle=False,
+        num_workers=4,
+        pin_memory=True,
+        persistent_workers=True
+    )
+
+    dataloader= DataLoader(
+        dataset= Kitti(KITTI_360_DATASET_DIR, projection_type= projection_type, set='eval', std_num_points=124792, num_samples=61280),
+        batch_size=batch_size,
+        shuffle=False,
         num_workers=4,
         pin_memory=True,
         persistent_workers=True
@@ -312,7 +312,7 @@ def compare_models(truth_model_name, model_name, batch_size= 16, print_batch_dat
 
     loss_function= nn.CrossEntropyLoss(ignore_index= IGNORE_INDEX, weight= torch.tensor(WEIGHTS).to(device))
 
-    result= train_test.compare(truth_model=truth_model, model=model, dataloader=dataloader, device= device, loss_fn=loss_function, print_batch_data=print_batch_data)
+    result= train_test.compare(truth_model=truth_model, model=model, truth_dataloader= truth_dataloader, dataloader=dataloader, device= device, loss_fn=loss_function, print_batch_data=print_batch_data)
 
     print(f"Comparison | overall accuracy= {result['oAcc']} | mean class accuracy= {result['mAcc']} | mean intersection over union= {result['mIoU']}")
 
@@ -351,14 +351,14 @@ def evaluate_data(projection_type, batch_size= 16, print_batch_data= True):
         for i in range(2):
             ground_truth_data[i], data[i]= ground_truth_data[i].to(device), data[i].to(device)
 
-        valid_points= ((ground_truth_data[0] != 0).any(dim= -1)) & ((data[0] != 0).any(dim= -1) )
+        valid_points= ((ground_truth_data[0] != 0).any(dim= -1)) & ((data[0] != 0).any(dim= -1))
 
         if not valid_points.any():
                     raise ValueError("A batch contains no valid points")
 
         ground_truth_data, data= ground_truth_data[1].to(device), data[1].to(device) # saves memory
 
-        labels= torch.arange(46).to(device)
+        labels= torch.arange(len(WEIGHTS)).to(device)
 
         oAcc.calculate_oAcc(ground_truth_data, data, valid_points)
         mAcc.calculate_mAcc(ground_truth_data, data, labels, valid_points)

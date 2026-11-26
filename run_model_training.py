@@ -8,6 +8,7 @@ os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "expandable_segments:True"
 import torch
 
 from core import train_pointnetpp
+from tools.reproducibility import set_seed
 
 
 def next_model_path(save_dir: Path, dataset: str, prefix: str | None= None) -> Path:
@@ -29,25 +30,29 @@ def next_model_path(save_dir: Path, dataset: str, prefix: str | None= None) -> P
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-pt", "--projection_type", choices= ("ground_truth", "pinhole", "cylindrical"), default= "ground_truth")
-    parser.add_argument("-bs", "--batch_size", default= 16)
+    parser.add_argument("-bs", "--batch_size", default= 32)
     parser.add_argument("-lr", "--learning_rate", default= 1e-3)
-    parser.add_argument("-ne", "--num_epochs", default= 5)
+    parser.add_argument("-ne", "--num_epochs", default= 120)
     parser.add_argument("-o", "--optim", choices= ("Adam", "SGD"), default= "Adam")
     parser.add_argument("-p", "--print_batch_data", action= 'store_true')
     args = parser.parse_args()
 
+    set_seed()
+
     model= None
     optimizer = None
+    scheduler= None
     print(f"Optim: {args.optim} | Learning Rate: {args.learning_rate}")
     print("-- Training --")
     for i in range(int(args.num_epochs)):
         
-        results = train_pointnetpp(input_model= model, projection_type= args.projection_type, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i, print_batch_data= args.print_batch_data, input_optimizer= optimizer)
+        results = train_pointnetpp(input_model= model, projection_type= args.projection_type, batch_size= int(args.batch_size), learning_rate= float(args.learning_rate), optimizer_choice= args.optim, num_epochs= 1, start_epoch= i, print_batch_data= args.print_batch_data, input_optimizer= optimizer, input_scheduler= scheduler)
 
         if results["status"]:
             dataset = "kitti360"
             model = results["model"]
             optimizer = results["optimizer"]
+            scheduler = results["scheduler"]
             model.eval()
 
             save_dir = Path("./models/saved")

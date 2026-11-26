@@ -15,7 +15,7 @@ _PROJECTION_RADIUS = 0.1 #0.0425
 
 # label value is semantic_ID * 1000 + instance_ID (no need to change for KITTI)
 
-_semantic_ID_dict = {
+_OFFICIAL_LABELS = {
     0 : "unlabeled",
     1 : "ego vehicle",
     2 : "rectification border",
@@ -64,13 +64,69 @@ _semantic_ID_dict = {
     45 : "license plate"
 }
 
+_UNWANTED_LABELS= [0, 1, 2, 3, 4, 5, 6, 9, 10, 14, 15, 16, 18, 29, 30, 34, 35, 36, 37, 38, 39, 40 , 41, 42, 43, 44, 45]
+
+_EVALUATION_LABELS= {
+    0 : "road",
+    1 : "sidewalk",
+    2 : "building",
+    3 : "wall",
+    4 : "fence",
+    5 : "pole",
+    6 : "traffic light",
+    7 : "traffic sign",
+    8 : "vegetation",
+    9 : "terrain",
+    10 : "sky",
+    11 : "person",
+    12 : "rider",
+    13 : "car",
+    14 : "truck",
+    15 : "bus",
+    16 : "train",
+    17 : "motorcycle",
+    18 : "bicycle",
+}
+
+
+def _clean_unwanted_labels(labeled_point_cloud_xyz):
+    points= labeled_point_cloud_xyz
+    labels= labeled_point_cloud_xyz[..., 4]
+
+    points[np.isin(labels, _UNWANTED_LABELS)]= 0
+
+    labels[labels== 7]= 0
+    labels[labels== 8]= 1
+    labels[labels== 11]= 2
+    labels[labels== 12]= 3
+    labels[labels== 13]= 4
+    labels[labels== 17]= 5
+    labels[labels== 19]= 6
+    labels[labels== 20]= 7
+    labels[labels== 21]= 8
+    labels[labels== 22]= 9
+    labels[labels== 23]= 10
+    labels[labels== 24]= 11
+    labels[labels== 25]= 12
+    labels[labels== 26]= 13
+    labels[labels== 27]= 14
+    labels[labels== 28]= 15
+    labels[labels== 31]= 16
+    labels[labels== 32]= 17
+    labels[labels== 33]= 18
+
+    return labeled_point_cloud_xyz
+
+
 def _get_KITTI_labeled_image_files(agnostic_image_directory):
     image_files = list(Path(agnostic_image_directory).glob('*.png'))
     return image_files
 
+
 def _get_KITTI_labeled_mesh_files(agnostic_mesh_directory):
     mesh_files = list(Path(agnostic_mesh_directory).glob('*.ply'))
     return mesh_files
+
 
 def _get_KITTI_raw_scan_files(agnostic_scan_directory):
     scan_files = list(Path(agnostic_scan_directory).glob('*.bin'))
@@ -113,7 +169,6 @@ def _xyz_to_cylindrical(point_cloud_xyz : np.array, LIDAR_relative_xyz : tuple) 
         point_range,
         points[valid_points, 3],
     ))
-
 
 
 def _cylindrical_to_labeled_point_cloud_xyz(point_cloud_cylindrical, point_cloud_xyz, labeled_image, image_margins : tuple, LIDAR_margins : tuple, label_decode_function, instance_decode_function) -> np.array:  # DOESN'T ACCOUNT FOR IMAGE THAT EXTENDS BEYOND LIDAR'S 0 DEGREES
@@ -172,7 +227,6 @@ def _cylindrical_to_labeled_point_cloud_xyz(point_cloud_cylindrical, point_cloud
     labeled_point_cloud_xyz[projection_raveled[projection_raveled != -1].astype(int),-1] = instance_matrix_raveled[projection_raveled != -1]
     
     return labeled_point_cloud_xyz
-
 
 
 def _load_KITTI_pinhole_calibration(absolute_calibration_directory : str) -> tuple:
@@ -248,7 +302,6 @@ def _xyz_to_pinhole(point_cloud_xyz : np.array, velo_to_image : np.array, image_
     ))
 
 
-
 def _pinhole_to_labeled_point_cloud_xyz(point_cloud_pinhole, point_cloud_xyz, labeled_image, label_decode_function, instance_decode_function) -> np.array:
     label_matrix = label_decode_function(labeled_image)
     instance_matrix = instance_decode_function(labeled_image)
@@ -277,12 +330,10 @@ def _pinhole_to_labeled_point_cloud_xyz(point_cloud_pinhole, point_cloud_xyz, la
     return labeled_point_cloud_xyz
 
 
-
 def _get_decoded_KITTI_label(raw_labeled_image : np.array) -> np.array:
     if np.max(raw_labeled_image) <= 45:
         return raw_labeled_image.astype(int)
     return (raw_labeled_image / 1000.0).astype(int)
-
 
 
 def _get_decoded_KITTI_instance(raw_labeled_image : np.array) -> np.array:
@@ -291,13 +342,11 @@ def _get_decoded_KITTI_instance(raw_labeled_image : np.array) -> np.array:
     return raw_labeled_image - (raw_labeled_image/1000).astype(int)*1000
 
 
-
 def _get_sampled_image(sample_labeled_image, image_margins : tuple,) -> np.array:
     sample_labeled_image = sample_labeled_image[int((sample_labeled_image.shape[0]-2.0)*image_margins[0]): int((sample_labeled_image.shape[0]-2.0)*(1.0-image_margins[1]))]
     sample_labeled_image =  sample_labeled_image[...,int((sample_labeled_image.shape[1]-2.0)*image_margins[2]):int((sample_labeled_image.shape[1]-2.0)*(1.0-image_margins[3]))]
 
     return sample_labeled_image
-
 
 
 def _get_sampled_point_cloud(sample_point_cloud_cylindrical, LIDAR_margins : tuple, return_element : str = 'range') -> np.array: # DOESN'T ACCOUNT FOR IMAGE THAT EXTENDS BEYOND 0 DEGREES
@@ -340,7 +389,6 @@ def _get_sampled_point_cloud(sample_point_cloud_cylindrical, LIDAR_margins : tup
     sample_point_cloud_projected = np.flip(sample_point_cloud_projected, axis = 1) # because angle is counterclockwise
 
     return sample_point_cloud_projected
-
 
 
 def _get_projection_output_path(destination_directory: str, prefix: str, base_name: str, ignore_duplicates: bool) -> Path:
@@ -457,6 +505,8 @@ def project_ground_truth_data(absolute_mesh_directory : str, absolute_scan_direc
                             title='LIDAR')
         fig.update_layout(scene=dict(aspectmode='data'))
         fig.show()'''
+
+        labeled_point_cloud_xyz= _clean_unwanted_labels(labeled_point_cloud_xyz)
         
         os.makedirs(agnostic_destination_directory, exist_ok=True)
         output_path = _get_projection_output_path(
@@ -470,7 +520,6 @@ def project_ground_truth_data(absolute_mesh_directory : str, absolute_scan_direc
     print("")
 
     return 0
-
 
 
 def project_pinhole_data(absolute_image_directory : str, absolute_scan_directory: str, absolute_destination_directory : str, prefix : str, absolute_calibration_directory : str, data_format : str, sample_only : bool = False, ignore_duplicates : bool = False) -> int:
@@ -573,6 +622,8 @@ def project_pinhole_data(absolute_image_directory : str, absolute_scan_directory
             _get_decoded_KITTI_instance
         )
 
+        labeled_point_cloud_xyz= _clean_unwanted_labels(labeled_point_cloud_xyz)
+
         os.makedirs(agnostic_destination_directory, exist_ok=True)
         output_path = _get_projection_output_path(
             agnostic_destination_directory,
@@ -584,7 +635,6 @@ def project_pinhole_data(absolute_image_directory : str, absolute_scan_directory
 
     print("")
     return 0
-
 
 
 def project_cylindrical_data(absolute_image_directory : str, absolute_scan_directory: str, absolute_destination_directory : str, prefix : str, LIDAR_relative_xyz : tuple , image_margins : tuple, LIDAR_margins : tuple, data_format : str, sample_only : bool = False, ignore_duplicates : bool = False) -> int:
@@ -676,6 +726,8 @@ def project_cylindrical_data(absolute_image_directory : str, absolute_scan_direc
         
         labeled_point_cloud_xyz = _cylindrical_to_labeled_point_cloud_xyz(point_cloud_cylindrical, point_cloud_xyz, labeled_image, image_margins, LIDAR_margins, _get_decoded_KITTI_label, _get_decoded_KITTI_instance)
 
+        labeled_point_cloud_xyz= _clean_unwanted_labels(labeled_point_cloud_xyz)
+
         os.makedirs(agnostic_destination_directory, exist_ok=True)
         output_path = _get_projection_output_path(
             agnostic_destination_directory,
@@ -688,7 +740,6 @@ def project_cylindrical_data(absolute_image_directory : str, absolute_scan_direc
     print("")
     
     return 0
-
 
 
 def inspect_collected_data(absolute_destination_directory : str, file : int = 0, display_as_3d : bool = False) -> int:

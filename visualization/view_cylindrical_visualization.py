@@ -17,7 +17,7 @@ def main():
     parser.add_argument("--index", type=int, default=0, help="Index of the matched image/scan pair to display")
     args = parser.parse_args()
 
-    dotenv.load_dotenv(Path(__file__).resolve().parent / ".env")
+    dotenv.load_dotenv(".env")
     dataset_directory_value = os.getenv("KITTI_360_DATASET_DIR")
     if not dataset_directory_value:
         raise RuntimeError("KITTI_360_DATASET_DIR is missing from the project .env file")

@@ -1,0 +1,1 @@
+python run_data_evaluation.py > temp_data_evaluation.log &
